@@ -1,0 +1,31 @@
+backend/firebase-key.json
+
+# Local environment variables containing private API keys
+.env
+
+# Python virtual environment
+venv/
+venvrag/
+.venv/
+env/
+
+# Local Milvus database file
+milvus_local.db
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local PDF uploads cache
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDE settings
+.cursor/
+.vscode/
+.idea/
+
+# Export versions of files
+*_export.md

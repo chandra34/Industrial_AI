@@ -1,0 +1,113 @@
+.chat-message {
+  display: flex;
+  gap: 12px;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chat-message--user {
+  padding: 16px 20px;
+  background: var(--user-bubble-bg);
+  border-radius: var(--radius-lg);
+}
+
+.chat-message--bot {
+  padding: 16px 20px;
+}
+
+.chat-message--bot .chat-message-body {
+  background: var(--bot-bubble-bg);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--bot-bubble-shadow);
+  flex: 1;
+}
+
+.chat-message--user .chat-message-body {
+  flex: 1;
+}
+
+.chat-message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: #e8e4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.chat-message--bot .chat-message-avatar {
+  background: #e0f0ff;
+  color: #3b82f6;
+}
+
+.chat-message-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.chat-message-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.chat-message-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.chat-message--user .chat-message-time {
+  text-align: right;
+  display: block;
+}
+
+.chat-message-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.chat-message-footer-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-message-footer-time {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.chat-message-source-detail {
+  margin-top: 10px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--accent);
+}
+
+.chat-message-source-detail strong {
+  color: var(--text-primary);
+}
+
+.chat-message-source-detail p {
+  margin-top: 6px;
+  line-height: 1.5;
+}

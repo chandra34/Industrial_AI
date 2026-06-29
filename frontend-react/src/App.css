@@ -1,0 +1,103 @@
+/* ===== CSS Reset & Variables ===== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Sidebar */
+  --sidebar-bg: #1a1a2e;
+  --sidebar-width: 60px;
+  --sidebar-icon: #8b8ba3;
+  --sidebar-icon-active: #fff;
+  --sidebar-accent: #6C63FF;
+
+  /* Header */
+  --header-height: 56px;
+  --header-bg: #ffffff;
+  --header-border: #e8e8f0;
+
+  /* Main area */
+  --main-bg: linear-gradient(160deg, #f0ecff 0%, #e8f0fe 40%, #fef4f0 100%);
+  --content-max-width: 800px;
+
+  /* Chat bubbles */
+  --user-bubble-bg: #eae6ff;
+  --user-bubble-text: #1a1a2e;
+  --bot-bubble-bg: #ffffff;
+  --bot-bubble-text: #333;
+  --bot-bubble-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+
+  /* Accent */
+  --accent: #6C63FF;
+  --accent-hover: #5a52e0;
+  --success: #22c55e;
+
+  /* Text */
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
+  /* Borders */
+  --border-light: #e5e7eb;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* ===== App Layout ===== */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-content {
+  flex: 1;
+  background: var(--main-bg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+/* ===== Button Reset ===== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: inherit;
+}
