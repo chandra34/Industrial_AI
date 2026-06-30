@@ -8,6 +8,8 @@ from backend.rag.embeddings.base import EmbeddingProvider
 logger = logging.getLogger(__name__)
 
 class OpenAIEmbedding(EmbeddingProvider):
+    """OpenAI embedding provider."""
+
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
         if not settings.openai_api_key:

@@ -2,10 +2,31 @@ import { useState } from 'react';
 import { downloadDocument } from '../api/client';
 import './DocumentsPanel.css';
 
+/**
+ * DocumentsPanel component displaying the list of all uploaded and indexed PDF files.
+ * Provides capabilities to view file metadata, download original files, delete indexes,
+ * or launch the upload modal.
+ *
+ * @component
+ * @param {Object} props - Component props.
+ * @param {Array<Object>} props.documents - Indexed files metadata list.
+ * @param {function(): void} props.onUploadClick - Open upload dialogue modal callback.
+ * @param {function(string): void} props.onDelete - Document deletion handler.
+ * @returns {React.JSX.Element} The rendered documents dashboard panel.
+ */
 export default function DocumentsPanel({ documents, onUploadClick, onDelete }) {
   const [downloadingIds, setDownloadingIds] = useState(new Set());
 
+  /**
+   * Dispatches file retrieval endpoint triggers, preventing multiple parallel downloads.
+   *
+   * @async
+   * @param {Object} doc - Document target config.
+   * @param {string} doc.document_id - Database document unique identifier.
+   * @param {string} doc.filename - Target output file naming mapping.
+   */
   async function handleDownload(doc) {
+
     if (downloadingIds.has(doc.document_id)) return;
 
     setDownloadingIds((prev) => {

@@ -71,6 +71,8 @@ def _sanitize_filter_value(value: str, field_name: str) -> str:
 
 
 class MilvusStore:
+    """Milvus-backed vector store for document chunk storage and search."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.collection_name = settings.milvus_collection_name
@@ -233,6 +235,7 @@ class MilvusStore:
             raise
 
     async def insert_chunks(self, chunks: list[ChunkRecord], embeddings: np.ndarray, user_id: str) -> int:
+        """Insert chunk embeddings into Milvus for ``user_id`` and return the count inserted."""
         if not chunks:
             return 0
         if len(chunks) != len(embeddings):
@@ -262,6 +265,7 @@ class MilvusStore:
         return len(data)
 
     async def search(self, query_embedding: np.ndarray, top_k: int, user_id: str) -> list[VectorSearchHit]:
+        """Perform a vector similarity search scoped to ``user_id``."""
         if query_embedding.ndim == 1:
             query_embedding = np.expand_dims(query_embedding, axis=0)
 

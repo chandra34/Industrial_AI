@@ -8,6 +8,7 @@ Be concise, accurate, and helpful.
 
 
 def build_messages(question: str, chunks: list[RetrievedChunk], max_chars: int) -> list[dict[str, str]]:
+    """Build chat messages with retrieved context truncated to ``max_chars``."""
     segments: list[str] = []
     current_length = 0
     for chunk in chunks:

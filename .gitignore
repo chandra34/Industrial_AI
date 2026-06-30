@@ -18,7 +18,8 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Local PDF uploads cache
+# Per-user BM25 indices and local PDF uploads (runtime data)
+backend/bm25_indices/
 backend/uploads/*
 !backend/uploads/.gitkeep
 

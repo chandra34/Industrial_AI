@@ -9,6 +9,8 @@ from backend.rag.embeddings.base import EmbeddingProvider
 logger = logging.getLogger(__name__)
 
 class GeminiEmbedding(EmbeddingProvider):
+    """Google Gemini embedding provider with L2-normalized vectors."""
+
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
         if not settings.gemini_api_key:

@@ -24,6 +24,8 @@ class IngestionResult:
 
 
 class IngestService:
+    """Parse PDFs, chunk text, embed vectors, and persist them to Milvus."""
+
     def __init__(
         self,
         settings: Settings,
@@ -46,6 +48,7 @@ class IngestService:
         return stored_path, document_id
 
     async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str) -> IngestionResult:
+        """Ingest a PDF for ``user_id`` and return indexing metadata."""
         if not file_bytes:
             raise ValueError("Uploaded file is empty")
 

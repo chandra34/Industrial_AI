@@ -5,6 +5,8 @@ import numpy as np
 from backend.config.settings import Settings
 
 class EmbeddingProvider(ABC):
+    """Abstract base class for text embedding providers."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 

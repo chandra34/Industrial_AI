@@ -8,13 +8,33 @@ import { queryDocuments, getDocuments, deleteDocument } from './api/client';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
 
+/**
+ * The main App layout component managing the RAG application lifecycle.
+ * Orchestrates views (chat, document index, settings), manages message histories,
+ * handles API requests (querying, uploading, deleting documents), and coordinates authentication status.
+ *
+ * @component
+ * @returns {React.JSX.Element} The rendered RAG workspace or the Login page.
+ */
 export default function App() {
   const { user } = useAuth();
+  
+  /** @type {['chat'|'documents'|'settings', function('chat'|'documents'|'settings'): void]} */
   const [activeView, setActiveView] = useState('chat');
+  
+  /** @type {[Array<{role: 'user'|'assistant', content: string, sources?: Array<any>, retrievalTime?: string, timestamp: Date}>, function(any): void]} */
   const [messages, setMessages] = useState([]);
+  
+  /** @type {[Array<{document_id: string, filename: string, page_count: number, chunk_count: number}>, function(any): void]} */
   const [documents, setDocuments] = useState([]);
+  
+  /** @type {[boolean, function(boolean): void]} */
   const [isLoading, setIsLoading] = useState(false);
+  
+  /** @type {[boolean, function(boolean): void]} */
   const [showUpload, setShowUpload] = useState(false);
+  
+  /** @type {[number, function(number): void]} */
   const [topK, setTopK] = useState(5);
 
   useEffect(() => {
@@ -31,6 +51,10 @@ export default function App() {
     setIsLoading(false);
     setShowUpload(false);
 
+    /**
+     * Internal async helper to fetch indexed files from database and populate local state.
+     * @private
+     */
     async function loadDocuments() {
       try {
         const response = await getDocuments();
@@ -46,6 +70,12 @@ export default function App() {
     return <Login />;
   }
 
+  /**
+   * Submits a user query to backend, logs response history, and records elapsed query latency.
+   *
+   * @async
+   * @param {string} question - The user's input prompt.
+   */
   async function handleSend(question) {
     const userMessage = {
       role: 'user',
@@ -81,10 +111,23 @@ export default function App() {
     }
   }
 
+  /**
+   * Callback invoked by UploadModal upon successful file ingest/index.
+   * Appends the new document object to local documents state.
+   *
+   * @param {Object} result - Metadata of the successfully uploaded document.
+   */
   function handleUploaded(result) {
     setDocuments((prev) => [...prev, result]);
   }
 
+  /**
+   * Triggers file deletion from filesystem and Milvus vector space.
+   * Prompts user with confirmation dialogue beforehand.
+   *
+   * @async
+   * @param {string} documentId - Unique database ID of target document.
+   */
   async function handleDeleteDocument(documentId) {
     if (!window.confirm("Are you sure you want to delete this document? This will remove its indexed vectors and raw file.")) {
       return;
@@ -96,6 +139,7 @@ export default function App() {
       alert(`Failed to delete document: ${err.message}`);
     }
   }
+
 
   return (
     <div className="app-layout">

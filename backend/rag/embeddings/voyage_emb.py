@@ -9,6 +9,8 @@ from backend.rag.embeddings.base import EmbeddingProvider
 logger = logging.getLogger(__name__)
 
 class VoyageEmbedding(EmbeddingProvider):
+    """Voyage AI embedding provider with query/document input types."""
+
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
         if not settings.voyage_api_key:

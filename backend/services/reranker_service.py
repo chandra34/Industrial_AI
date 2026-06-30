@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 class RerankerService:
+    """Rerank retrieval candidates using a Hugging Face cross-encoder model."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.model_name = settings.reranker_model_name
@@ -22,6 +24,7 @@ class RerankerService:
         self.client = httpx.AsyncClient(headers=headers, timeout=20.0)
 
     async def rerank(self, query: str, chunks: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
+        """Score and reorder ``chunks`` by relevance to ``query``, returning top ``top_k``."""
         if not self.settings.reranker_enabled or not chunks:
             return chunks[:top_k]
             
@@ -60,4 +63,5 @@ class RerankerService:
         return chunks[:top_k]
 
     async def close(self) -> None:
+        """Close the underlying HTTP client."""
         await self.client.aclose()

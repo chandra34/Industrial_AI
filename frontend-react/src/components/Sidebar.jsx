@@ -1,6 +1,17 @@
 import './Sidebar.css';
 
+/**
+ * Sidebar component containing application navigation buttons.
+ * Allows switching between Chat, Document Index, and Settings views.
+ *
+ * @component
+ * @param {Object} props - Component props.
+ * @param {'chat'|'documents'|'settings'} props.activeView - Currently active application view.
+ * @param {function('chat'|'documents'|'settings'): void} props.onViewChange - Handler to navigate to a new view.
+ * @returns {React.JSX.Element} The rendered navigation sidebar.
+ */
 export default function Sidebar({ activeView, onViewChange }) {
+
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">

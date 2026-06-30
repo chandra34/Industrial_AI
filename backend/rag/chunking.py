@@ -24,6 +24,7 @@ def chunk_pages(
     source_filename: str,
     settings: Settings,
 ) -> list[ChunkRecord]:
+    """Split PDF pages into overlapping text chunks ready for embedding."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,

@@ -2,13 +2,34 @@ import { useState } from 'react';
 import SourceBadges from './SourceBadges';
 import './ChatMessage.css';
 
+/**
+ * Formats a Date object to a localized 12-hour AM/PM string representation.
+ *
+ * @param {Date} date - The date to format.
+ * @returns {string} The formatted time string (e.g. "02:30 PM").
+ */
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
+/**
+ * ChatMessage component rendering an individual message bubble for either the user or the assistant.
+ * Handles assistant source expansion/citations dynamically with accordion previews.
+ *
+ * @component
+ * @param {Object} props - Component props.
+ * @param {Object} props.message - Message data.
+ * @param {'user'|'assistant'} props.message.role - Participant role.
+ * @param {string} props.message.content - Markdown or plaintext content of the message.
+ * @param {Date} props.message.timestamp - Time of message creation.
+ * @param {string} [props.message.retrievalTime] - Assistant database retrieval latency in seconds.
+ * @param {Array<any>} [props.message.sources] - Assistant context citations.
+ * @returns {React.JSX.Element} The rendered message bubble.
+ */
 export default function ChatMessage({ message }) {
   const [expandedSource, setExpandedSource] = useState(null);
   const isUser = message.role === 'user';
+
 
   return (
     <div className={`chat-message ${isUser ? 'chat-message--user' : 'chat-message--bot'}`}>

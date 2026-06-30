@@ -3,6 +3,13 @@ import { auth, googleProvider } from '../api/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import './Login.css';
 
+/**
+ * Login component rendering authentication dialogs.
+ * Supports email/password registration (Sign Up), login (Sign In), and Google single sign-on (SSO).
+ *
+ * @component
+ * @returns {React.JSX.Element} The rendered login card interface.
+ */
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -10,7 +17,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Submits authentication forms. Registers or authenticates users using Firebase Auth methods.
+   *
+   * @async
+   * @param {React.FormEvent} e - Form submission event.
+   */
   const handleSubmit = async (e) => {
+
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -37,7 +51,13 @@ export default function Login() {
     }
   };
 
+  /**
+   * Spawns a Google OAuth popup dialog to authenticate users with Google Accounts.
+   *
+   * @async
+   */
   const handleGoogleLogin = async () => {
+
     setError('');
     setLoading(true);
     try {

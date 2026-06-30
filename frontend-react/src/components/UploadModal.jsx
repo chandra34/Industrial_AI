@@ -67,6 +67,17 @@ const PDFFileIcon = () => (
   </svg>
 );
 
+/**
+ * UploadModal component managing PDF uploads and vector DB indexing pipelines.
+ * Renders file drag-and-drop state, uploads selected files, and displays processing metadata.
+ *
+ * @component
+ * @param {Object} props - Component props.
+ * @param {boolean} props.isOpen - Modal visibility flag.
+ * @param {function(): void} props.onClose - Modal close event handler.
+ * @param {function(Object): void} props.onUploaded - Success callback to register indexed file metadata with App layout.
+ * @returns {React.JSX.Element|null} The modal overlay markup or null.
+ */
 export default function UploadModal({ isOpen, onClose, onUploaded }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -86,6 +97,12 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
 
   if (!isOpen) return null;
 
+  /**
+   * Dispatches PDF file upload and triggers parsing, chunking, and Milvus insertion.
+   * Logs execution timing metrics.
+   *
+   * @async
+   */
   async function handleUpload() {
     if (!file) return;
     setError('');
@@ -108,6 +125,9 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     }
   }
 
+  /**
+   * Resets local file upload inputs and status indicators.
+   */
   function handleReset() {
     setFile(null);
     setUploading(false);
@@ -117,6 +137,7 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     setElapsedTime('0.0');
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
+
 
   return (
     <div className="upload-overlay" onClick={onClose}>

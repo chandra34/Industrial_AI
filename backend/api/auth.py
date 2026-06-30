@@ -10,6 +10,8 @@ security = HTTPBearer(auto_error=False)
 
 
 class FirebaseUser(BaseModel):
+    """Authenticated user identity extracted from a verified Firebase ID token."""
+
     uid: str
     email: str | None = None
 

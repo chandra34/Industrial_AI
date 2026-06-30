@@ -5,8 +5,11 @@ from backend.rag.embeddings.openai_emb import OpenAIEmbedding
 from backend.rag.embeddings.voyage_emb import VoyageEmbedding
 
 class EmbeddingFactory:
+    """Create an embedding provider from application settings."""
+
     @staticmethod
     def create(settings: Settings) -> EmbeddingProvider:
+        """Instantiate the configured embedding provider."""
         provider = settings.embedding_provider.lower().strip()
         
         if provider == "gemini":

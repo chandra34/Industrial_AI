@@ -1,9 +1,25 @@
 import { useState } from 'react';
 import './ChatInput.css';
 
+/**
+ * ChatInput component containing a textarea and action buttons for sending queries and launching the upload modal.
+ * Supports submitting messages on Enter (without Shift) and auto-resets text after submission.
+ *
+ * @component
+ * @param {Object} props - Component props.
+ * @param {function(string): void} props.onSend - Callback invoked when a query is successfully submitted.
+ * @param {function(): void} props.onUploadClick - Callback to open the PDF upload modal window.
+ * @param {boolean} props.disabled - If true, disables input textarea and action buttons.
+ * @returns {React.JSX.Element} The rendered message input form.
+ */
 export default function ChatInput({ onSend, onUploadClick, disabled }) {
   const [text, setText] = useState('');
 
+  /**
+   * Submits user input text, prevents default form action, resets form state.
+   *
+   * @param {React.FormEvent} e - Form submission event.
+   */
   function handleSubmit(e) {
     e.preventDefault();
     const trimmed = text.trim();
@@ -12,7 +28,13 @@ export default function ChatInput({ onSend, onUploadClick, disabled }) {
     setText('');
   }
 
+  /**
+   * Keyboard handler to submit the form when Enter is pressed without the Shift modifier.
+   *
+   * @param {React.KeyboardEvent} e - Keyboard event.
+   */
   function handleKeyDown(e) {
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);

@@ -13,6 +13,8 @@ class QAResult:
 
 
 class RAGPipeline:
+    """Orchestrate retrieval, prompt assembly, and LLM answer generation."""
+
     def __init__(
         self,
         settings: Settings,
@@ -24,6 +26,7 @@ class RAGPipeline:
         self.llm_service = llm_service
 
     async def answer_question(self, question: str, user_id: str, top_k: int | None = None) -> QAResult:
+        """Retrieve relevant chunks and generate an answer for ``question``."""
         sources = await self.retrieval_service.search(question, user_id=user_id, top_k=top_k)
         messages = build_messages(question, sources, max_chars=self.settings.max_context_chars)
         answer = await self.llm_service.generate_answer(messages)

@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 class LLMService:
+    """Generate answers via the Groq chat completions API."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         if not settings.groq_api_key:
@@ -18,6 +20,7 @@ class LLMService:
         logger.info("Using Groq LLM model %s", settings.llm_model)
 
     async def generate_answer(self, messages: list[dict[str, str]]) -> str:
+        """Send ``messages`` to the LLM and return the assistant reply text."""
         try:
             completion = await self.client.chat.completions.create(
                 model=self.settings.llm_model,

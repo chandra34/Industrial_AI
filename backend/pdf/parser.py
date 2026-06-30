@@ -22,6 +22,7 @@ _multiline_re = re.compile(r"\n{3,}")
 
 
 def normalize_text(text: str) -> str:
+    """Collapse whitespace and normalize line breaks in extracted PDF text."""
     cleaned = text.replace("\u00a0", " ")
     cleaned = _whitespace_re.sub(" ", cleaned)
     cleaned = _multiline_re.sub("\n\n", cleaned)
@@ -43,6 +44,7 @@ def _extract_pages(document: fitz.Document) -> list[PDFPage]:
 
 
 def extract_pages_from_bytes(pdf_bytes: bytes) -> list[PDFPage]:
+    """Parse PDF bytes and return non-empty pages with normalized text."""
     try:
         with fitz.open(stream=pdf_bytes, filetype="pdf") as document:
             return _extract_pages(document)

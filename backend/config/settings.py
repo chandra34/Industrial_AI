@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application configuration loaded from environment variables and ``.env``."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -78,10 +80,12 @@ class Settings(BaseSettings):
 
     @property
     def uses_milvus_lite(self) -> bool:
+        """Return True when Milvus is configured to use a local ``.db`` file."""
         return self.resolved_milvus_uri.lower().endswith(".db")
 
     @property
     def resolved_upload_dir(self) -> Path:
+        """Return the absolute path to the PDF upload directory."""
         upload_path = self.upload_dir
         if not upload_path.is_absolute():
             upload_path = self.project_root / upload_path
@@ -98,4 +102,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return a cached ``Settings`` instance."""
     return Settings()

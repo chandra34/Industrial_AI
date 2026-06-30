@@ -3,8 +3,22 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import './ChatArea.css';
 
+/**
+ * ChatArea component representing the conversation canvas.
+ * Renders user and system messages, a loading animation when retrieving context,
+ * and maintains scroll position focus on the latest entries.
+ *
+ * @component
+ * @param {Object} props - Component props.
+ * @param {Array<Object>} props.messages - List of chat message structures.
+ * @param {boolean} props.isLoading - If true, displays the loading animation.
+ * @param {function(string): void} props.onSend - Submit callback for new prompt requests.
+ * @param {function(): void} props.onUploadClick - Open upload dialogue modal callback.
+ * @returns {React.JSX.Element} The rendered conversation window.
+ */
 export default function ChatArea({ messages, isLoading, onSend, onUploadClick }) {
   const scrollRef = useRef(null);
+
 
   useEffect(() => {
     if (scrollRef.current) {

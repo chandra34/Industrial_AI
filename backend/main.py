@@ -41,6 +41,7 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    """Initialize Firebase, services, and attach them to application state."""
     settings.resolved_upload_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting %s", settings.app_name)
 
@@ -100,6 +101,7 @@ async def on_startup() -> None:
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
+    """Release external clients and other resources acquired at startup."""
     reranker_service = getattr(app.state, "reranker_service", None)
     if reranker_service:
         await reranker_service.close()

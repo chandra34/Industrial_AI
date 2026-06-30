@@ -1,8 +1,16 @@
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
+/**
+ * Header component displaying the application title, current authenticated user email,
+ * logout option, and a user initials avatar.
+ *
+ * @component
+ * @returns {React.JSX.Element} The rendered header bar.
+ */
 export default function Header() {
   const { user, logout } = useAuth();
+
   const initial = user?.email ? user.email.charAt(0).toUpperCase() : 'U';
 
   return (

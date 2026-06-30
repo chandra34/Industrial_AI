@@ -38,6 +38,8 @@ def reciprocal_rank_fusion(
 
 
 class RetrievalService:
+    """Hybrid dense + BM25 retrieval with optional reranking."""
+
     def __init__(
         self,
         settings: Settings,
@@ -53,6 +55,7 @@ class RetrievalService:
         self.reranker_service = reranker_service
 
     async def search(self, query: str, user_id: str, top_k: int | None = None) -> list[RetrievedChunk]:
+        """Return the top matching chunks for ``query`` scoped to ``user_id``."""
         top_k = top_k or self.settings.top_k
         
         # Determine candidate pool size for hybrid fusion

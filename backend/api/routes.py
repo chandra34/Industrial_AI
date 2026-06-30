@@ -37,6 +37,7 @@ def _get_state_service(request: Request, name: str):
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    """Return application health and configured service identifiers."""
     settings = get_settings()
     return HealthResponse(
         app_name=settings.app_name,
@@ -51,6 +52,7 @@ async def upload_pdf(
     file: UploadFile = File(...),
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> UploadResponse:
+    """Accept a PDF upload, ingest it, and index chunks for the authenticated user."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="A file name is required")
     if Path(file.filename).suffix.lower() != ".pdf":
@@ -96,6 +98,7 @@ async def query_documents(
     payload: QueryRequest,
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> QueryResponse:
+    """Run RAG retrieval and generation for a user question."""
     pipeline: RAGPipeline = _get_state_service(request, "rag_pipeline")
 
     try:
@@ -127,6 +130,7 @@ async def list_documents(
     request: Request,
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> DocumentListResponse:
+    """List indexed documents belonging to the authenticated user."""
     vector_store: MilvusStore = _get_state_service(request, "vector_store")
     try:
         docs = await vector_store.list_documents(current_user.uid)
@@ -151,6 +155,7 @@ async def delete_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> DeleteResponse:
+    """Delete a document's vectors, raw file, and BM25 index entries for the user."""
     vector_store: MilvusStore = _get_state_service(request, "vector_store")
     settings = get_settings()
     upload_dir = settings.resolved_upload_dir
@@ -218,6 +223,7 @@ async def download_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> FileResponse:
+    """Download the original PDF file for an owned document."""
     settings = get_settings()
     upload_dir = settings.resolved_upload_dir
     vector_store: MilvusStore = _get_state_service(request, "vector_store")
