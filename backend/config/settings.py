@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", alias="APP_ENV")
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_file: str | None = Field(default="backend/logs/app.log", alias="LOG_FILE")
+    log_rotation_mb: int = Field(default=10, alias="LOG_ROTATION_MB")
+    log_backup_count: int = Field(default=5, alias="LOG_BACKUP_COUNT")
 
     project_root: Path = Path(__file__).resolve().parents[2]
     upload_dir: Path = Path("backend/uploads")

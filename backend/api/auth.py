@@ -40,6 +40,9 @@ async def get_current_user(
                 detail="Invalid user identity format",
             )
             
+        from backend.utils.logging_context import user_id_var
+        user_id_var.set(uid)
+            
         return FirebaseUser(
             uid=uid,
             email=decoded_token.get("email"),

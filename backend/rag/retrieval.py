@@ -56,6 +56,12 @@ class RetrievalService:
 
     async def search(self, query: str, user_id: str, top_k: int | None = None) -> list[RetrievedChunk]:
         """Return the top matching chunks for ``query`` scoped to ``user_id``."""
+        import time
+        
+        # Log retrieval start with query preview for data sanitization
+        query_preview = (query[:60] + "...") if len(query) > 60 else query
+        logger.info("Query flow: retrieval started | query_preview: '%s' | user_id: %s", query_preview, user_id)
+        
         top_k = top_k or self.settings.top_k
         
         # Determine candidate pool size for hybrid fusion
@@ -65,24 +71,42 @@ class RetrievalService:
             candidate_k = max(20, top_k * 3)
 
         # 1. Fetch dense results
+        start_dense = time.perf_counter()
         query_embedding = await run_in_threadpool(self.embedding_service.embed_query, query)
         dense_hits = await self.vector_store.search(query_embedding, candidate_k, user_id)
+        duration_dense = time.perf_counter() - start_dense
+        logger.info("Query flow: dense search done | hits: %d | duration: %.3fs", len(dense_hits), duration_dense)
 
         # If BM25 is disabled or service is not active, return dense hits (truncated or reranked)
         if not self.settings.bm25_enabled or not self.bm25_service:
+            logger.info("Query flow: BM25 search skipped (disabled or unavailable)")
             chunks = [_hit_to_chunk(hit) for hit in dense_hits]
             if self.settings.reranker_enabled and self.reranker_service:
-                return await self.reranker_service.rerank(query, chunks, top_k)
+                start_rerank = time.perf_counter()
+                reranked = await self.reranker_service.rerank(query, chunks, top_k)
+                duration_rerank = time.perf_counter() - start_rerank
+                logger.info("Query flow: reranking done | input: %d | output: %d | duration: %.3fs", len(chunks), len(reranked), duration_rerank)
+                return reranked
+            logger.info("Query flow: reranking skipped | output: %d", len(chunks[:top_k]))
             return chunks[:top_k]
 
         # 2. Fetch sparse BM25 results
+        start_sparse = time.perf_counter()
         try:
             sparse_hits = await run_in_threadpool(self.bm25_service.search, user_id, query, candidate_k)
+            duration_sparse = time.perf_counter() - start_sparse
+            logger.info("Query flow: BM25 search done | hits: %d | duration: %.3fs", len(sparse_hits), duration_sparse)
         except Exception as exc:
-            logger.error("BM25 search failed, falling back to dense-only: %s", exc)
+            duration_sparse = time.perf_counter() - start_sparse
+            logger.warning("Query flow: BM25 search failed, falling back to dense-only | duration: %.3fs | error: %s", duration_sparse, exc)
             chunks = [_hit_to_chunk(hit) for hit in dense_hits]
             if self.settings.reranker_enabled and self.reranker_service:
-                return await self.reranker_service.rerank(query, chunks, top_k)
+                start_rerank = time.perf_counter()
+                reranked = await self.reranker_service.rerank(query, chunks, top_k)
+                duration_rerank = time.perf_counter() - start_rerank
+                logger.info("Query flow: reranking done | input: %d | output: %d | duration: %.3fs", len(chunks), len(reranked), duration_rerank)
+                return reranked
+            logger.info("Query flow: reranking skipped | output: %d", len(chunks[:top_k]))
             return chunks[:top_k]
 
         # 3. Perform RRF fusion
@@ -139,7 +163,12 @@ class RetrievalService:
 
         # 5. Apply Reranking if enabled
         if self.settings.reranker_enabled and self.reranker_service:
+            start_rerank = time.perf_counter()
             chunks = await self.reranker_service.rerank(query, chunks, top_k)
+            duration_rerank = time.perf_counter() - start_rerank
+            logger.info("Query flow: reranking done | input: %d | output: %d | duration: %.3fs", len(top_fused), len(chunks), duration_rerank)
+        else:
+            logger.info("Query flow: reranking skipped | output: %d", len(chunks))
 
         return chunks
 

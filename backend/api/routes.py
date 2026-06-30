@@ -156,6 +156,9 @@ async def delete_document(
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> DeleteResponse:
     """Delete a document's vectors, raw file, and BM25 index entries for the user."""
+    from backend.utils.logging_context import document_id_var
+    document_id_var.set(document_id)
+    
     vector_store: MilvusStore = _get_state_service(request, "vector_store")
     settings = get_settings()
     upload_dir = settings.resolved_upload_dir
@@ -224,6 +227,9 @@ async def download_document(
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> FileResponse:
     """Download the original PDF file for an owned document."""
+    from backend.utils.logging_context import document_id_var
+    document_id_var.set(document_id)
+    
     settings = get_settings()
     upload_dir = settings.resolved_upload_dir
     vector_store: MilvusStore = _get_state_service(request, "vector_store")

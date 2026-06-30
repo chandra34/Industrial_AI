@@ -1,10 +1,14 @@
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import os
+from pathlib import Path
+import time
+import uuid
 import firebase_admin
 from firebase_admin import credentials
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routes import router as api_router
@@ -17,16 +21,85 @@ from backend.services.bm25_service import BM25Service
 from backend.services.ingest_service import IngestService
 from backend.services.reranker_service import RerankerService
 from backend.vectordb.milvus_db import MilvusStore
+from backend.utils.logging_context import CorrelationFilter, request_id_var, route_var, clear_context
 
 settings = get_settings()
 
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
+# Configure unified standard logging format
+log_format = "%(asctime)s | %(levelname)s | [%(request_id)s] [%(user_id)s] [%(document_id)s] | %(name)s | %(message)s"
+handlers = []
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.addFilter(CorrelationFilter())
+console_handler.setFormatter(logging.Formatter(log_format))
+handlers.append(console_handler)
+
+# File handler with rotation (if log_file path is configured)
+if settings.log_file:
+    log_path = Path(settings.log_file)
+    if not log_path.is_absolute():
+        log_path = settings.project_root / log_path
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            filename=log_path,
+            maxBytes=settings.log_rotation_mb * 1024 * 1024,
+            backupCount=settings.log_backup_count,
+            encoding="utf-8",
+        )
+        file_handler.addFilter(CorrelationFilter())
+        file_handler.setFormatter(logging.Formatter(log_format))
+        handlers.append(file_handler)
+    except Exception as e:
+        print(f"Failed to initialize rotating file log handler at {log_path}: {e}")
+
+# Apply configuration to the root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+root_logger.handlers = handlers
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
+
+@app.middleware("http")
+async def correlation_logging_middleware(request: Request, call_next):
+    """Middleware to manage async logging contexts, generate correlation IDs, and track request timing."""
+    clear_context()
+    
+    # Extract request-id from headers or generate new one
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+    request_id_var.set(request_id)
+    route_var.set(f"{request.method} {request.url.path}")
+    
+    start_time = time.perf_counter()
+    logger.info("Request started: %s %s", request.method, request.url.path)
+    
+    try:
+        response = await call_next(request)
+        duration = time.perf_counter() - start_time
+        logger.info(
+            "Request completed: %s %s | status: %d | duration: %.3fs",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration,
+        )
+        # Expose correlation ID to client response headers
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as exc:
+        duration = time.perf_counter() - start_time
+        logger.error(
+            "Request failed: %s %s | duration: %.3fs | error: %s",
+            request.method,
+            request.url.path,
+            duration,
+            str(exc),
+            exc_info=True,
+        )
+        raise
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +110,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
+
 
 
 @app.on_event("startup")
