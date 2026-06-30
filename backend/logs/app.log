@@ -1,0 +1,39 @@
+2026-06-30 14:13:21,388 | INFO | [-] [-] [-] | backend.main | Starting RAG Milvus App
+2026-06-30 14:13:21,466 | INFO | [-] [-] [-] | backend.main | Firebase Admin SDK initialized using certificate: backend/firebase-key.json
+2026-06-30 14:13:21,466 | INFO | [-] [-] [-] | backend.rag.embeddings.gemini | Using Google embedding model gemini-embedding-2 (dim=1536)
+2026-06-30 14:13:21,467 | INFO | [-] [-] [-] | backend.vectordb.milvus_db | Connecting to Milvus at C:\Users\chand\Downloads\Production_RAG\milvus_local.db (lite=True)
+2026-06-30 14:13:21,533 | INFO | [-] [-] [-] | milvus_lite.server_manager | MilvusLite server started for C:\Users\chand\Downloads\Production_RAG\milvus_local.db on port 61395
+2026-06-30 14:13:21,632 | INFO | [-] [-] [-] | milvus_lite.engine.recovery | recovery: removed orphan data file C:\Users\chand\Downloads\Production_RAG\milvus_local.db\collections\rag_documents\partitions\_pk_1\data\data_000001_000109.parquet
+2026-06-30 14:13:21,906 | INFO | [-] [-] [-] | backend.rag.llm | Using Groq LLM model llama-3.1-8b-instant
+2026-06-30 14:13:21,958 | INFO | [-] [-] [-] | backend.services.bm25_service | BM25Service initialised (index_dir=C:\Users\chand\Downloads\Production_RAG\backend\bm25_indices, stemmer=english)
+2026-06-30 14:13:21,958 | INFO | [-] [-] [-] | backend.main | BM25 sparse search enabled
+2026-06-30 14:13:22,221 | INFO | [-] [-] [-] | backend.main | Reranker enabled using model BAAI/bge-reranker-v2-m3
+2026-06-30 14:13:22,221 | INFO | [-] [-] [-] | backend.main | Application startup complete
+2026-06-30 14:14:14,331 | INFO | [6432bc139fe648ceb41558433c7a79df] [-] [-] | backend.main | Request started: GET /api/v1/documents
+2026-06-30 14:14:15,649 | INFO | [6432bc139fe648ceb41558433c7a79df] [-] [-] | backend.main | Request completed: GET /api/v1/documents | status: 200 | duration: 1.322s
+2026-06-30 14:14:15,661 | INFO | [97acbabb93264090a2d9eaec24c96f9d] [-] [-] | backend.main | Request started: GET /api/v1/documents
+2026-06-30 14:14:15,980 | INFO | [97acbabb93264090a2d9eaec24c96f9d] [-] [-] | backend.main | Request completed: GET /api/v1/documents | status: 200 | duration: 0.318s
+2026-06-30 14:14:51,122 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [-] [-] | backend.main | Request started: POST /api/v1/query
+2026-06-30 14:14:51,135 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.pipeline | Query flow: query received | question_preview: 'Solve finger exersice 5' | user_id: kD7NlYbQabPWr5DdIgjFryMYzvH2
+2026-06-30 14:14:51,135 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: retrieval started | query_preview: 'Solve finger exersice 5' | user_id: kD7NlYbQabPWr5DdIgjFryMYzvH2
+2026-06-30 14:14:52,670 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: dense search done | hits: 25 | duration: 1.528s
+2026-06-30 14:14:52,781 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: BM25 search done | hits: 25 | duration: 0.114s
+2026-06-30 14:15:13,182 | ERROR | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.services.reranker_service | Hugging Face Reranking failed: . Returning raw candidates.
+2026-06-30 14:15:13,186 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: reranking done | input: 25 | output: 5 | duration: 20.216s
+2026-06-30 14:15:13,902 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | httpx | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-30 14:15:13,963 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.pipeline | Query flow: answer generated | duration: 0.779s
+2026-06-30 14:15:13,963 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.pipeline | Query flow: request completed successfully
+2026-06-30 14:15:13,963 | INFO | [9f2604f0757b4a61a65bf4bd59a21267] [-] [-] | backend.main | Request completed: POST /api/v1/query | status: 200 | duration: 22.842s
+2026-06-30 14:22:27,867 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [-] [-] | backend.main | Request started: POST /api/v1/query
+2026-06-30 14:22:27,874 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.pipeline | Query flow: query received | question_preview: 'what the patient name in the report?' | user_id: kD7NlYbQabPWr5DdIgjFryMYzvH2
+2026-06-30 14:22:27,875 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: retrieval started | query_preview: 'what the patient name in the report?' | user_id: kD7NlYbQabPWr5DdIgjFryMYzvH2
+2026-06-30 14:22:29,460 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: dense search done | hits: 25 | duration: 1.583s
+2026-06-30 14:22:29,489 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: BM25 search done | hits: 25 | duration: 0.026s
+2026-06-30 14:22:40,003 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | httpx | HTTP Request: POST https://router.huggingface.co/hf-inference/models/BAAI/bge-reranker-v2-m3 "HTTP/1.1 200 OK"
+2026-06-30 14:22:40,003 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.retrieval | Query flow: reranking done | input: 25 | output: 5 | duration: 10.345s
+2026-06-30 14:22:40,404 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | httpx | HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-30 14:22:40,418 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.pipeline | Query flow: answer generated | duration: 0.411s
+2026-06-30 14:22:40,418 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [kD7NlYbQabPWr5DdIgjFryMYzvH2] [-] | backend.rag.pipeline | Query flow: request completed successfully
+2026-06-30 14:22:40,419 | INFO | [03c3b5dd426b43d78c5e9ec47802307c] [-] [-] | backend.main | Request completed: POST /api/v1/query | status: 200 | duration: 12.553s
+2026-06-30 14:28:04,389 | INFO | [-] [-] [-] | backend.main | Closed RerankerService client
+2026-06-30 14:28:04,576 | INFO | [-] [-] [-] | milvus_lite.server_manager | MilvusLite server stopped for C:\Users\chand\Downloads\Production_RAG\milvus_local.db (port 61395)
