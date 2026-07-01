@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     milvus_m: int = Field(default=16, alias="MILVUS_M")
     milvus_ef_construction: int = Field(default=200, alias="MILVUS_EF_CONSTRUCTION")
     milvus_ef_search: int = Field(default=64, alias="MILVUS_EF_SEARCH")
+    milvus_nlist: int = Field(default=128, alias="MILVUS_NLIST")
+    milvus_nprobe: int = Field(default=16, alias="MILVUS_NPROBE")
+    milvus_insert_batch_size: int = Field(default=250, alias="MILVUS_INSERT_BATCH_SIZE")
 
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
