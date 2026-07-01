@@ -43,7 +43,16 @@ def _bootstrap_pymilvus_environment(settings: Settings) -> str:
 
 _bootstrap_pymilvus_environment(get_settings())
 
-from pymilvus import DataType, MilvusClient, MilvusException, AsyncMilvusClient  # noqa: E402
+from pymilvus import (  # noqa: E402
+    DataType,
+    MilvusClient,
+    MilvusException,
+    AsyncMilvusClient,
+    Function,
+    FunctionType,
+    AnnSearchRequest,
+    RRFRanker,
+)
 
 
 @dataclass(slots=True)
@@ -68,6 +77,31 @@ def _sanitize_filter_value(value: str, field_name: str) -> str:
             f"Invalid {field_name}: contains disallowed characters"
         )
     return value
+
+
+# ---------------------------------------------------------------------------
+# Output field list shared by search and hybrid_search
+# ---------------------------------------------------------------------------
+_OUTPUT_FIELDS = ["document_id", "source_filename", "page_number", "chunk_index", "chunk_text"]
+
+
+def _parse_search_hit(hit: Any) -> VectorSearchHit:
+    """Extract a VectorSearchHit from a pymilvus result object (dict or object)."""
+    entity = getattr(hit, "entity", None) or (hit.get("entity") if isinstance(hit, dict) else {})
+    score = (
+        getattr(hit, "distance", None)
+        or getattr(hit, "score", None)
+        or (hit.get("distance") if isinstance(hit, dict) else None)
+        or (hit.get("score") if isinstance(hit, dict) else None)
+    )
+    return VectorSearchHit(
+        document_id=str(entity.get("document_id")),
+        source_filename=str(entity.get("source_filename")),
+        page_number=int(entity.get("page_number") or 0),
+        chunk_index=int(entity.get("chunk_index") or 0),
+        chunk_text=str(entity.get("chunk_text") or ""),
+        score=float(score) if score is not None else 0.0,
+    )
 
 
 class MilvusStore:
@@ -127,24 +161,35 @@ class MilvusStore:
     def _build_index_params(self):
         index_params = self._client.prepare_index_params()
         index_type = self._effective_index_type()
-        kwargs: dict[str, Any] = {
+
+        # Dense vector index on 'embedding' field
+        dense_kwargs: dict[str, Any] = {
             "field_name": "embedding",
             "index_type": index_type,
             "metric_type": self.settings.milvus_metric_type,
         }
         if index_type == "HNSW":
-            kwargs["params"] = {
+            dense_kwargs["params"] = {
                 "M": self.settings.milvus_m,
                 "efConstruction": self.settings.milvus_ef_construction,
             }
         elif index_type.startswith("IVF"):
-            kwargs["params"] = {
+            dense_kwargs["params"] = {
                 "nlist": self.settings.milvus_nlist,
             }
-        index_params.add_index(**kwargs)
+        index_params.add_index(**dense_kwargs)
+
+        # Sparse vector index on 'sparse_vector' field (Milvus native BM25)
+        if self.settings.bm25_enabled:
+            index_params.add_index(
+                field_name="sparse_vector",
+                index_type="SPARSE_INVERTED_INDEX",
+                metric_type="BM25",
+            )
+
         return index_params
 
-    def _search_params(self) -> dict[str, Any]:
+    def _dense_search_params(self) -> dict[str, Any]:
         params: dict[str, Any] = {"metric_type": self.settings.milvus_metric_type}
         index_type = self._effective_index_type()
         if index_type == "HNSW":
@@ -168,28 +213,34 @@ class MilvusStore:
                             field_names.add(name)
                         if name == "user_id":
                             user_id_field = f
-                    
+
                     has_user_id = "user_id" in field_names
+                    has_sparse = "sparse_vector" in field_names
                     is_part_key = False
                     if user_id_field:
                         is_part_key = user_id_field.get("is_partition_key", False) if isinstance(user_id_field, dict) else getattr(user_id_field, "is_partition_key", False)
 
-                    if not has_user_id or not is_part_key:
+                    needs_recreate = (not has_user_id or not is_part_key)
+                    # Also recreate if BM25 is enabled but the sparse_vector field is missing
+                    if self.settings.bm25_enabled and not has_sparse:
+                        needs_recreate = True
+
+                    if needs_recreate:
                         if not self.settings.uses_milvus_lite:
                             logger.error(
                                 "Critical: Existing Milvus collection '%s' has schema mismatch "
-                                "(missing 'user_id' field or partition key config) in production. "
+                                "(missing 'user_id' partition key or 'sparse_vector' field) in production. "
                                 "Halt startup to prevent data loss.",
                                 self.collection_name,
                             )
                             raise RuntimeError(
                                 f"Database schema mismatch: Collection '{self.collection_name}' exists "
-                                f"but is missing the required 'user_id' partition key configuration. "
+                                f"but is missing required fields/configuration. "
                                 f"Automatic deletion is blocked in production to protect data. "
                                 f"Manual migration required."
                             )
 
-                        logger.warning("Existing collection %s lacks 'user_id' field or partition key config. Re-creating.", self.collection_name)
+                        logger.warning("Existing collection %s needs schema update. Re-creating.", self.collection_name)
                         try:
                             self._client.drop_collection(self.collection_name)
                         except Exception as drop_exc:
@@ -203,13 +254,13 @@ class MilvusStore:
                                 self._async_client.close()
                             except Exception:
                                 pass
-                            
+
                             from pathlib import Path
                             import shutil
                             coll_dir = Path(self._uri) / "collections" / self.collection_name
                             if coll_dir.exists():
                                 shutil.rmtree(coll_dir, ignore_errors=True)
-                            
+
                             # Re-initialize connections
                             self._client = self._create_client()
                             self._async_client = self._create_async_client()
@@ -222,9 +273,10 @@ class MilvusStore:
 
             index_type = self._effective_index_type()
             logger.info(
-                "Creating Milvus collection %s (index=%s, lite=%s)",
+                "Creating Milvus collection %s (index=%s, bm25=%s, lite=%s)",
                 self.collection_name,
                 index_type,
+                self.settings.bm25_enabled,
                 self.settings.uses_milvus_lite,
             )
 
@@ -235,8 +287,23 @@ class MilvusStore:
             schema.add_field("source_filename", DataType.VARCHAR, max_length=512)
             schema.add_field("page_number", DataType.INT64)
             schema.add_field("chunk_index", DataType.INT64)
-            schema.add_field("chunk_text", DataType.VARCHAR, max_length=65535)
+            schema.add_field(
+                "chunk_text", DataType.VARCHAR, max_length=65535,
+                enable_analyzer=True,  # Required for Milvus native BM25 tokenization
+            )
             schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=self.settings.milvus_dimension)
+
+            # Add sparse vector field and BM25 function if enabled
+            if self.settings.bm25_enabled:
+                schema.add_field("sparse_vector", DataType.SPARSE_FLOAT_VECTOR)
+                bm25_function = Function(
+                    name="text_bm25",
+                    input_field_names=["chunk_text"],
+                    output_field_names=["sparse_vector"],
+                    function_type=FunctionType.BM25,
+                )
+                schema.add_function(bm25_function)
+                logger.info("Added BM25 function: chunk_text -> sparse_vector")
 
             self._client.create_collection(
                 collection_name=self.collection_name,
@@ -256,7 +323,11 @@ class MilvusStore:
             raise
 
     async def insert_chunks(self, chunks: list[ChunkRecord], embeddings: np.ndarray, user_id: str) -> int:
-        """Insert chunk embeddings into Milvus for ``user_id`` and return the count inserted."""
+        """Insert chunk embeddings into Milvus for ``user_id`` and return the count inserted.
+
+        Milvus will automatically generate the sparse BM25 vector from ``chunk_text``
+        via the native BM25 function if enabled.
+        """
         if not chunks:
             return 0
         if len(chunks) != len(embeddings):
@@ -307,7 +378,7 @@ class MilvusStore:
         return total_inserted
 
     async def search(self, query_embedding: np.ndarray, top_k: int, user_id: str) -> list[VectorSearchHit]:
-        """Perform a vector similarity search scoped to ``user_id``."""
+        """Perform a dense-only vector similarity search scoped to ``user_id``."""
         if query_embedding.ndim == 1:
             query_embedding = np.expand_dims(query_embedding, axis=0)
 
@@ -316,31 +387,66 @@ class MilvusStore:
             data=query_embedding.tolist(),
             limit=top_k,
             filter=f'user_id == "{_sanitize_filter_value(user_id, "user_id")}"',
-            search_params=self._search_params(),
-            output_fields=["document_id", "source_filename", "page_number", "chunk_index", "chunk_text"],
+            search_params=self._dense_search_params(),
+            output_fields=_OUTPUT_FIELDS,
         )
 
         hits: list[VectorSearchHit] = []
         for batch in results:
             for hit in batch:
-                entity = getattr(hit, "entity", None) or (hit.get("entity") if isinstance(hit, dict) else {})
-                score = (
-                    getattr(hit, "distance", None)
-                    or getattr(hit, "score", None)
-                    or (hit.get("distance") if isinstance(hit, dict) else None)
-                    or (hit.get("score") if isinstance(hit, dict) else None)
-                )
+                hits.append(_parse_search_hit(hit))
 
-                hits.append(
-                    VectorSearchHit(
-                        document_id=str(entity.get("document_id")),
-                        source_filename=str(entity.get("source_filename")),
-                        page_number=int(entity.get("page_number") or 0),
-                        chunk_index=int(entity.get("chunk_index") or 0),
-                        chunk_text=str(entity.get("chunk_text") or ""),
-                        score=float(score) if score is not None else 0.0,
-                    )
-                )
+        return hits
+
+    async def hybrid_search(
+        self,
+        query_embedding: np.ndarray,
+        query_text: str,
+        top_k: int,
+        user_id: str,
+    ) -> list[VectorSearchHit]:
+        """Perform a hybrid dense + sparse (BM25) search with RRF fusion inside Milvus.
+
+        Milvus executes both search requests server-side and merges results
+        using Reciprocal Rank Fusion before returning a unified result set.
+        """
+        if query_embedding.ndim == 1:
+            query_embedding_list = query_embedding.tolist()
+        else:
+            query_embedding_list = query_embedding[0].tolist()
+
+        safe_user_id = _sanitize_filter_value(user_id, "user_id")
+        filter_expr = f'user_id == "{safe_user_id}"'
+
+        # Dense ANN search request
+        dense_req = AnnSearchRequest(
+            data=[query_embedding_list],
+            anns_field="embedding",
+            param=self._dense_search_params(),
+            limit=top_k,
+            expr=filter_expr,
+        )
+
+        # Sparse BM25 search request — pass raw query text; Milvus tokenizes it
+        sparse_req = AnnSearchRequest(
+            data=[query_text],
+            anns_field="sparse_vector",
+            param={"metric_type": "BM25"},
+            limit=top_k,
+            expr=filter_expr,
+        )
+
+        results = await self._async_client.hybrid_search(
+            collection_name=self.collection_name,
+            reqs=[dense_req, sparse_req],
+            ranker=RRFRanker(),
+            limit=top_k,
+            output_fields=_OUTPUT_FIELDS,
+        )
+
+        hits: list[VectorSearchHit] = []
+        for hit in results[0]:
+            hits.append(_parse_search_hit(hit))
 
         return hits
 
@@ -401,10 +507,13 @@ class MilvusStore:
         return list(docs_map.values())
 
     async def delete_document(self, document_id: str, user_id: str) -> None:
-        """Delete all vectors for the specified document_id and user_id."""
+        """Delete all vectors (dense and sparse) for the specified document_id and user_id.
+
+        Milvus handles sparse index cleanup automatically when rows are deleted.
+        """
         if not await self._async_client.has_collection(self.collection_name):
             return
-        
+
         safe_doc_id = _sanitize_filter_value(document_id, "document_id")
         safe_user_id = _sanitize_filter_value(user_id, "user_id")
         filter_expr = f'document_id == "{safe_doc_id}" and user_id == "{safe_user_id}"'
@@ -422,88 +531,6 @@ class MilvusStore:
             logger.error("Failed to delete document %s for user %s from Milvus: %s", document_id, user_id, exc)
             raise RuntimeError(f"Failed to delete document from vector store: {exc}") from exc
 
-    async def get_all_chunk_texts(self, user_id: str) -> list[str]:
-        """Return all chunk_text values stored for *user_id*.
-
-        Used to rebuild the BM25 sparse index after a document deletion.
-        """
-        if not await self._async_client.has_collection(self.collection_name):
-            return []
-
-        chunk_texts: list[str] = []
-        page_limit = 5000
-        offset = 0
-        safe_user_id = _sanitize_filter_value(user_id, "user_id")
-
-        while True:
-            try:
-                results = await self._async_client.query(
-                    collection_name=self.collection_name,
-                    filter=f'user_id == "{safe_user_id}"',
-                    output_fields=["chunk_text"],
-                    limit=page_limit,
-                    offset=offset,
-                )
-            except MilvusException as exc:
-                logger.error("Failed to query chunk texts for user %s: %s", user_id, exc)
-                break
-
-            if not results:
-                break
-
-            for row in results:
-                text = row.get("chunk_text")
-                if text:
-                    chunk_texts.append(str(text))
-
-            if len(results) < page_limit:
-                break
-
-            offset += page_limit
-
-        return chunk_texts
-
-    async def get_chunks_by_text(self, texts: list[str], user_id: str) -> list[VectorSearchHit]:
-        """Query Milvus to retrieve metadata for a list of chunk texts."""
-        if not await self._async_client.has_collection(self.collection_name) or not texts:
-            return []
-        
-        safe_user_id = _sanitize_filter_value(user_id, "user_id")
-        
-        # Escape backslashes, double quotes, newlines, and carriage returns in chunk texts to prevent injection/syntax errors
-        escaped_texts = []
-        for t in texts:
-            escaped = t.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
-            escaped_texts.append(f'"{escaped}"')
-            
-        texts_expr = ", ".join(escaped_texts)
-        filter_expr = f'user_id == "{safe_user_id}" and chunk_text in [{texts_expr}]'
-        
-        try:
-            results = await self._async_client.query(
-                collection_name=self.collection_name,
-                filter=filter_expr,
-                output_fields=["document_id", "source_filename", "page_number", "chunk_index", "chunk_text"],
-                limit=len(texts) * 2,
-            )
-        except MilvusException as exc:
-            logger.error("Failed to query chunks by text: %s", exc)
-            return []
-            
-        hits = []
-        for row in results:
-            hits.append(
-                VectorSearchHit(
-                    document_id=str(row.get("document_id", "")),
-                    source_filename=str(row.get("source_filename", "")),
-                    page_number=int(row.get("page_number", 0)),
-                    chunk_index=int(row.get("chunk_index", 0)),
-                    chunk_text=str(row.get("chunk_text", "")),
-                    score=0.0,
-                )
-            )
-        return hits
-
     async def close(self) -> None:
         """Release database connections."""
         try:
@@ -511,7 +538,7 @@ class MilvusStore:
             logger.info("Closed synchronous Milvus client connection")
         except Exception as e:
             logger.warning("Failed to close synchronous Milvus client: %s", e)
-            
+
         try:
             await self._async_client.close()
             logger.info("Closed asynchronous Milvus client connection")

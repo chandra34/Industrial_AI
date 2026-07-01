@@ -3,7 +3,6 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
-from fastapi.concurrency import run_in_threadpool
 
 from backend.config.settings import get_settings
 from backend.schemas.schemas import (
@@ -16,7 +15,6 @@ from backend.schemas.schemas import (
     DeleteResponse,
     DocumentItem,
 )
-from backend.rag.chunking import ChunkRecord
 from backend.rag.pipeline import RAGPipeline
 from backend.services.ingest_service import IngestService
 from backend.vectordb.milvus_db import MilvusStore
@@ -155,7 +153,7 @@ async def delete_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> DeleteResponse:
-    """Delete a document's vectors, raw file, and BM25 index entries for the user."""
+    """Delete a document's vectors and raw file for the user."""
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
     
@@ -188,26 +186,6 @@ async def delete_document(
             except Exception as e:
                 logger.warning("Could not delete file %s from disk: %s", exact_file_path, e)
 
-        # Rebuild BM25 index without the deleted document's chunks
-        bm25_service = getattr(request.app.state, "bm25_service", None)
-        if bm25_service:
-            try:
-                remaining_texts = await vector_store.get_all_chunk_texts(current_user.uid)
-                # Build a minimal list of chunk-like objects for rebuild
-                remaining_chunks = [
-                    ChunkRecord(
-                        document_id="", source_filename="",
-                        page_number=0, chunk_index=i, text=t,
-                    )
-                    for i, t in enumerate(remaining_texts)
-                ]
-                await run_in_threadpool(
-                    bm25_service.delete_document_from_index,
-                    current_user.uid, remaining_chunks,
-                )
-                logger.info("Rebuilt BM25 index for user %s after document deletion", current_user.uid)
-            except Exception as bm25_exc:
-                logger.warning("BM25 index rebuild failed after delete: %s", bm25_exc)
 
         msg = f"Successfully deleted document {document_id}"
         if not deleted_file:

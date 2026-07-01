@@ -63,10 +63,8 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.2, alias="LLM_TEMPERATURE")
     llm_max_tokens: int = Field(default=1024, alias="LLM_MAX_TOKENS")
 
-    # BM25 sparse search settings
+    # BM25 sparse search settings (uses Milvus native BM25 via sparse vectors)
     bm25_enabled: bool = Field(default=True, alias="BM25_ENABLED")
-    bm25_index_dir: Path = Path("backend/bm25_indices")
-    bm25_stemmer: str = Field(default="english", alias="BM25_STEMMER")
 
     # Reranker Settings
     reranker_enabled: bool = Field(default=True, alias="RERANKER_ENABLED")
@@ -100,13 +98,6 @@ class Settings(BaseSettings):
             upload_path = self.project_root / upload_path
         return upload_path
 
-    @property
-    def resolved_bm25_index_dir(self) -> Path:
-        """Absolute path to BM25 index storage directory."""
-        index_path = self.bm25_index_dir
-        if not index_path.is_absolute():
-            index_path = self.project_root / index_path
-        return index_path
 
 
 @lru_cache
