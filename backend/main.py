@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes import router as api_router
 from backend.config.settings import get_settings
 from backend.rag.embeddings import EmbeddingFactory
-from backend.rag.llm import LLMService
+from backend.rag.llm import LLMFactory
 from backend.rag.pipeline import RAGPipeline
 from backend.rag.retrieval import RetrievalService
 from backend.services.bm25_service import BM25Service
@@ -146,7 +146,7 @@ async def on_startup() -> None:
 
     embedding_service = EmbeddingFactory.create(settings)
     vector_store = MilvusStore(settings)
-    llm_service = LLMService(settings)
+    llm_service = LLMFactory.create(settings)
 
     # BM25 sparse index (conditional on feature flag)
     bm25_service: BM25Service | None = None

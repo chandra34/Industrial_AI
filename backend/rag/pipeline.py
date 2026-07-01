@@ -3,7 +3,7 @@ import time
 from dataclasses import dataclass
 
 from backend.config.settings import Settings
-from backend.rag.llm import LLMService
+from backend.rag.llm import LLMProvider
 from backend.rag.prompts import build_messages
 from backend.rag.retrieval import RetrievedChunk, RetrievalService
 
@@ -23,7 +23,7 @@ class RAGPipeline:
         self,
         settings: Settings,
         retrieval_service: RetrievalService,
-        llm_service: LLMService,
+        llm_service: LLMProvider,
     ) -> None:
         self.settings = settings
         self.retrieval_service = retrieval_service
