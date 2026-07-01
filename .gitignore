@@ -30,3 +30,6 @@ backend/uploads/*
 
 # Export versions of files
 *_export.md
+
+# Logs
+backend/logs/*
