@@ -182,3 +182,8 @@ async def on_shutdown() -> None:
     if reranker_service:
         await reranker_service.close()
         logger.info("Closed RerankerService client")
+
+    vector_store = getattr(app.state, "vector_store", None)
+    if vector_store:
+        await vector_store.close()
+        logger.info("Closed MilvusStore connections")

@@ -137,13 +137,20 @@ class MilvusStore:
                 "M": self.settings.milvus_m,
                 "efConstruction": self.settings.milvus_ef_construction,
             }
+        elif index_type.startswith("IVF"):
+            kwargs["params"] = {
+                "nlist": self.settings.milvus_nlist,
+            }
         index_params.add_index(**kwargs)
         return index_params
 
     def _search_params(self) -> dict[str, Any]:
         params: dict[str, Any] = {"metric_type": self.settings.milvus_metric_type}
-        if self._effective_index_type() == "HNSW":
+        index_type = self._effective_index_type()
+        if index_type == "HNSW":
             params["params"] = {"ef": self.settings.milvus_ef_search}
+        elif index_type.startswith("IVF"):
+            params["params"] = {"nprobe": self.settings.milvus_nprobe}
         return params
 
     def _ensure_collection(self) -> None:
@@ -168,6 +175,20 @@ class MilvusStore:
                         is_part_key = user_id_field.get("is_partition_key", False) if isinstance(user_id_field, dict) else getattr(user_id_field, "is_partition_key", False)
 
                     if not has_user_id or not is_part_key:
+                        if not self.settings.uses_milvus_lite:
+                            logger.error(
+                                "Critical: Existing Milvus collection '%s' has schema mismatch "
+                                "(missing 'user_id' field or partition key config) in production. "
+                                "Halt startup to prevent data loss.",
+                                self.collection_name,
+                            )
+                            raise RuntimeError(
+                                f"Database schema mismatch: Collection '{self.collection_name}' exists "
+                                f"but is missing the required 'user_id' partition key configuration. "
+                                f"Automatic deletion is blocked in production to protect data. "
+                                f"Manual migration required."
+                            )
+
                         logger.warning("Existing collection %s lacks 'user_id' field or partition key config. Re-creating.", self.collection_name)
                         try:
                             self._client.drop_collection(self.collection_name)
@@ -255,14 +276,35 @@ class MilvusStore:
                 }
             )
 
-        await self._async_client.insert(collection_name=self.collection_name, data=data)
+        batch_size = self.settings.milvus_insert_batch_size
+        total_inserted = 0
+        total_batches = (len(data) + batch_size - 1) // batch_size
+
+        for i in range(0, len(data), batch_size):
+            batch = data[i : i + batch_size]
+            await self._async_client.insert(collection_name=self.collection_name, data=batch)
+            total_inserted += len(batch)
+            logger.info(
+                "Inserted batch %s/%s (%s vectors) into %s for user %s",
+                (i // batch_size) + 1,
+                total_batches,
+                len(batch),
+                self.collection_name,
+                user_id,
+            )
+
         try:
             await self._async_client.flush([self.collection_name])
         except Exception:
             logger.debug("Flush not required or failed")
 
-        logger.info("Inserted %s vectors into %s for user %s", len(data), self.collection_name, user_id)
-        return len(data)
+        logger.info(
+            "Successfully inserted %s total vectors into %s for user %s",
+            total_inserted,
+            self.collection_name,
+            user_id,
+        )
+        return total_inserted
 
     async def search(self, query_embedding: np.ndarray, top_k: int, user_id: str) -> list[VectorSearchHit]:
         """Perform a vector similarity search scoped to ``user_id``."""
@@ -306,41 +348,55 @@ class MilvusStore:
         """List all unique documents and compute page/chunk metadata for a specific user."""
         if not await self._async_client.has_collection(self.collection_name):
             return []
-        
-        try:
-            results = await self._async_client.query(
-                collection_name=self.collection_name,
-                filter=f"id >= 0 and user_id == '{_sanitize_filter_value(user_id, 'user_id')}'",
-                output_fields=["document_id", "source_filename", "page_number"],
-                limit=100000,
-            )
-        except MilvusException as exc:
-            logger.error("Failed to query documents from Milvus: %s", exc)
-            return []
 
-        docs_map = {}
-        for row in results:
-            doc_id = row.get("document_id")
-            filename = row.get("source_filename")
-            page_num = row.get("page_number", 1)
-            if not doc_id:
-                continue
-            
-            if filename and filename.startswith(f"{doc_id}_"):
-                pretty_name = filename[len(doc_id) + 1 :]
-            else:
-                pretty_name = filename or "Unknown"
+        docs_map: dict[str, dict] = {}
+        page_limit = 5000
+        offset = 0
+        safe_user_id = _sanitize_filter_value(user_id, "user_id")
 
-            if doc_id not in docs_map:
-                docs_map[doc_id] = {
-                    "document_id": doc_id,
-                    "filename": pretty_name,
-                    "page_count": 0,
-                    "chunk_count": 0,
-                }
-            docs_map[doc_id]["chunk_count"] += 1
-            if page_num > docs_map[doc_id]["page_count"]:
-                docs_map[doc_id]["page_count"] = page_num
+        while True:
+            try:
+                results = await self._async_client.query(
+                    collection_name=self.collection_name,
+                    filter=f"id >= 0 and user_id == '{safe_user_id}'",
+                    output_fields=["document_id", "source_filename", "page_number"],
+                    limit=page_limit,
+                    offset=offset,
+                )
+            except MilvusException as exc:
+                logger.error("Failed to query documents from Milvus: %s", exc)
+                return list(docs_map.values())
+
+            if not results:
+                break
+
+            for row in results:
+                doc_id = row.get("document_id")
+                filename = row.get("source_filename")
+                page_num = row.get("page_number", 1)
+                if not doc_id:
+                    continue
+
+                if filename and filename.startswith(f"{doc_id}_"):
+                    pretty_name = filename[len(doc_id) + 1 :]
+                else:
+                    pretty_name = filename or "Unknown"
+
+                if doc_id not in docs_map:
+                    docs_map[doc_id] = {
+                        "document_id": doc_id,
+                        "filename": pretty_name,
+                        "page_count": 0,
+                        "chunk_count": 0,
+                    }
+                docs_map[doc_id]["chunk_count"] += 1
+                if page_num > docs_map[doc_id]["page_count"]:
+                    docs_map[doc_id]["page_count"] = page_num
+
+            if len(results) < page_limit:
+                break
+
+            offset += page_limit
 
         return list(docs_map.values())
 
@@ -374,22 +430,38 @@ class MilvusStore:
         if not await self._async_client.has_collection(self.collection_name):
             return []
 
-        try:
-            results = await self._async_client.query(
-                collection_name=self.collection_name,
-                filter=f'user_id == "{_sanitize_filter_value(user_id, "user_id")}"',
-                output_fields=["chunk_text"],
-                limit=100000,
-            )
-        except MilvusException as exc:
-            logger.error("Failed to query chunk texts for user %s: %s", user_id, exc)
-            return []
+        chunk_texts: list[str] = []
+        page_limit = 5000
+        offset = 0
+        safe_user_id = _sanitize_filter_value(user_id, "user_id")
 
-        return [
-            str(row.get("chunk_text", ""))
-            for row in results
-            if row.get("chunk_text")
-        ]
+        while True:
+            try:
+                results = await self._async_client.query(
+                    collection_name=self.collection_name,
+                    filter=f'user_id == "{safe_user_id}"',
+                    output_fields=["chunk_text"],
+                    limit=page_limit,
+                    offset=offset,
+                )
+            except MilvusException as exc:
+                logger.error("Failed to query chunk texts for user %s: %s", user_id, exc)
+                break
+
+            if not results:
+                break
+
+            for row in results:
+                text = row.get("chunk_text")
+                if text:
+                    chunk_texts.append(str(text))
+
+            if len(results) < page_limit:
+                break
+
+            offset += page_limit
+
+        return chunk_texts
 
     async def get_chunks_by_text(self, texts: list[str], user_id: str) -> list[VectorSearchHit]:
         """Query Milvus to retrieve metadata for a list of chunk texts."""
@@ -431,3 +503,17 @@ class MilvusStore:
                 )
             )
         return hits
+
+    async def close(self) -> None:
+        """Release database connections."""
+        try:
+            self._client.close()
+            logger.info("Closed synchronous Milvus client connection")
+        except Exception as e:
+            logger.warning("Failed to close synchronous Milvus client: %s", e)
+            
+        try:
+            await self._async_client.close()
+            logger.info("Closed asynchronous Milvus client connection")
+        except Exception as e:
+            logger.warning("Failed to close asynchronous Milvus client: %s", e)
