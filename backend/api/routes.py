@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.concurrency import run_in_threadpool
 
 from backend.config.settings import get_settings
-from backend.models.schemas import (
+from backend.schemas.schemas import (
     HealthResponse,
     QueryRequest,
     QueryResponse,

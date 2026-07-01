@@ -4,7 +4,7 @@ import logging
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from backend.config.settings import Settings
-from backend.pdf.parser import PDFPage
+from backend.ingestion.parsers.utils.parser import PDFPage
 
 logger = logging.getLogger(__name__)
 

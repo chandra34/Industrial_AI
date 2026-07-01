@@ -1,7 +1,7 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from backend.config.settings import Settings
 from backend.rag.chunking import ChunkRecord
-from backend.pdf.parser import PDFPage
+from backend.ingestion.parsers.utils.parser import PDFPage
 
 class RecursiveChunker:
     """Wraps LangChain's RecursiveCharacterTextSplitter to perform character-based chunking."""

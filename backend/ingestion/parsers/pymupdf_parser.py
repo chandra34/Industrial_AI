@@ -1,7 +1,7 @@
 from backend.config.settings import Settings
 from backend.ingestion.parsers.base import BaseParser
 from backend.ingestion.chunkers.recursive import RecursiveChunker
-from backend.pdf.parser import extract_pages_from_bytes
+from backend.ingestion.parsers.utils.parser import extract_pages_from_bytes
 from backend.rag.chunking import ChunkRecord
 
 class PyMuPDFParser(BaseParser):

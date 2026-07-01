@@ -57,4 +57,3 @@ class DocumentListResponse(BaseModel):
 class DeleteResponse(BaseModel):
     status: str = Field(default="success")
     message: str
-
