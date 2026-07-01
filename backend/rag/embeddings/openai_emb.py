@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from backend.config.settings import Settings
 from backend.rag.embeddings.base import EmbeddingProvider
@@ -16,7 +16,7 @@ class OpenAIEmbedding(EmbeddingProvider):
             raise ValueError(
                 "OPENAI_API_KEY is required. Set it in .env or the environment."
             )
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         logger.info(
             "Using OpenAI embedding model %s (dim=%s)",
             settings.embedding_model_name,
@@ -25,7 +25,7 @@ class OpenAIEmbedding(EmbeddingProvider):
 
 
 
-    def _embed_batch(self, texts: list[str]) -> np.ndarray:
+    async def _embed_batch(self, texts: list[str]) -> np.ndarray:
         # Note: 'dimensions' parameter is only supported by 'text-embedding-3-*' models
         kwargs = {
             "model": self.settings.embedding_model_name,
@@ -34,7 +34,7 @@ class OpenAIEmbedding(EmbeddingProvider):
         if self.settings.embedding_model_name.startswith("text-embedding-3"):
             kwargs["dimensions"] = self.settings.milvus_dimension
             
-        response = self.client.embeddings.create(**kwargs)
+        response = await self.client.embeddings.create(**kwargs)
         
         vectors = np.array([x.embedding for x in response.data], dtype=np.float32)
         if vectors.shape[1] != self.settings.milvus_dimension:

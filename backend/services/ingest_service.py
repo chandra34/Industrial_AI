@@ -88,7 +88,7 @@ class IngestService:
 
             # Embedding generation
             start_embed = time.perf_counter()
-            embeddings = self.embedding_service.embed_texts(chunk.text for chunk in chunks)
+            embeddings = await self.embedding_service.embed_texts(chunk.text for chunk in chunks)
             duration_embed = time.perf_counter() - start_embed
             logger.info("Upload flow: embeddings generated | count: %d | duration: %.3fs", len(embeddings), duration_embed)
             
