@@ -17,7 +17,6 @@ from backend.rag.embeddings import EmbeddingFactory
 from backend.rag.llm import LLMFactory
 from backend.rag.pipeline import RAGPipeline
 from backend.rag.retrieval import RetrievalService
-from backend.services.bm25_service import BM25Service
 from backend.services.ingest_service import IngestService
 from backend.services.reranker_service import RerankerService
 from backend.vectordb.milvus_db import MilvusStore
@@ -148,11 +147,9 @@ async def on_startup() -> None:
     vector_store = MilvusStore(settings)
     llm_service = LLMFactory.create(settings)
 
-    # BM25 sparse index (conditional on feature flag)
-    bm25_service: BM25Service | None = None
+    # BM25 sparse search is handled natively by Milvus (schema + SPARSE_INVERTED_INDEX)
     if settings.bm25_enabled:
-        bm25_service = BM25Service(settings)
-        logger.info("BM25 sparse search enabled")
+        logger.info("BM25 sparse search enabled (Milvus native)")
     else:
         logger.info("BM25 sparse search disabled")
 
@@ -164,12 +161,11 @@ async def on_startup() -> None:
     else:
         logger.info("Reranker disabled")
 
-    retrieval_service = RetrievalService(settings, vector_store, embedding_service, bm25_service, reranker_service)
+    retrieval_service = RetrievalService(settings, vector_store, embedding_service, reranker_service)
 
     app.state.vector_store = vector_store
-    app.state.bm25_service = bm25_service
     app.state.reranker_service = reranker_service
-    app.state.ingest_service = IngestService(settings, vector_store, embedding_service, bm25_service)
+    app.state.ingest_service = IngestService(settings, vector_store, embedding_service)
     app.state.rag_pipeline = RAGPipeline(settings, retrieval_service, llm_service)
 
     logger.info("Application startup complete")

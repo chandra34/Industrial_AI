@@ -6,7 +6,6 @@ from uuid import uuid4
 from backend.config.settings import Settings
 from backend.rag.embeddings import EmbeddingProvider
 from backend.ingestion.pipeline import get_parser
-from backend.services.bm25_service import BM25Service
 from backend.vectordb.milvus_db import MilvusStore
 
 logger = logging.getLogger(__name__)
@@ -23,19 +22,21 @@ class IngestionResult:
 
 
 class IngestService:
-    """Parse PDFs, chunk text, embed vectors, and persist them to Milvus."""
+    """Parse PDFs, chunk text, embed vectors, and persist them to Milvus.
+
+    Milvus handles sparse BM25 vector generation natively during insertion,
+    so no separate BM25 index update step is required.
+    """
 
     def __init__(
         self,
         settings: Settings,
         vector_store: MilvusStore,
         embedding_service: EmbeddingProvider,
-        bm25_service: BM25Service | None = None,
     ) -> None:
         self.settings = settings
         self.vector_store = vector_store
         self.embedding_service = embedding_service
-        self.bm25_service = bm25_service
         self.upload_dir = settings.resolved_upload_dir
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -101,16 +102,6 @@ class IngestService:
             logger.info("Upload flow: vectors stored | count: %d | duration: %.3fs", stored_count, duration_store)
             
             logger.info("Indexed document %s for user %s with %s chunks", document_id, user_id, stored_count)
-
-            # Update BM25 sparse index (non-critical — failure here must not break ingestion)
-            if self.bm25_service:
-                start_bm25 = time.perf_counter()
-                try:
-                    self.bm25_service.add_to_index(user_id, chunks)
-                    duration_bm25 = time.perf_counter() - start_bm25
-                    logger.info("Upload flow: BM25 updated | duration: %.3fs", duration_bm25)
-                except Exception as bm25_exc:
-                    logger.warning("BM25 index update failed for user %s: %s", user_id, bm25_exc)
 
             logger.info("Upload flow: request completed successfully | document_id: %s", document_id)
             return IngestionResult(

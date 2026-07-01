@@ -1,19 +1,15 @@
-from collections import defaultdict
 from dataclasses import dataclass
 import logging
+import time
 
 from fastapi.concurrency import run_in_threadpool
 
 from backend.config.settings import Settings
 from backend.rag.embeddings import EmbeddingProvider
-from backend.services.bm25_service import BM25Service
 from backend.services.reranker_service import RerankerService
 from backend.vectordb.milvus_db import MilvusStore, VectorSearchHit
 
 logger = logging.getLogger(__name__)
-
-# RRF smoothing constant (conventionally 60)
-K_RRF = 60
 
 
 @dataclass(slots=True)
@@ -26,148 +22,83 @@ class RetrievedChunk:
     score: float
 
 
-def reciprocal_rank_fusion(
-    rankings: list[list[str]], k: int = K_RRF
-) -> list[tuple[str, float]]:
-    """Fuse multiple ranked lists of identifiers (chunk_texts) into one ranked list."""
-    scores: dict[str, float] = defaultdict(float)
-    for ranking in rankings:
-        for rank, item_id in enumerate(ranking, start=1):
-            scores[item_id] += 1.0 / (k + rank)
-    return sorted(scores.items(), key=lambda x: -x[1])
-
-
 class RetrievalService:
-    """Hybrid dense + BM25 retrieval with optional reranking."""
+    """Hybrid dense + sparse (BM25) retrieval with optional reranking.
+
+    When ``bm25_enabled`` is True, retrieval is performed via Milvus native
+    hybrid search (dense + sparse BM25 with RRF fusion inside the database).
+    When disabled, only dense vector search is used.
+    """
 
     def __init__(
         self,
         settings: Settings,
         vector_store: MilvusStore,
         embedding_service: EmbeddingProvider,
-        bm25_service: BM25Service | None = None,
         reranker_service: RerankerService | None = None,
     ) -> None:
         self.settings = settings
         self.vector_store = vector_store
         self.embedding_service = embedding_service
-        self.bm25_service = bm25_service
         self.reranker_service = reranker_service
 
     async def search(self, query: str, user_id: str, top_k: int | None = None) -> list[RetrievedChunk]:
         """Return the top matching chunks for ``query`` scoped to ``user_id``."""
-        import time
-        
         # Log retrieval start with query preview for data sanitization
         query_preview = (query[:60] + "...") if len(query) > 60 else query
         logger.info("Query flow: retrieval started | query_preview: '%s' | user_id: %s", query_preview, user_id)
-        
+
         top_k = top_k or self.settings.top_k
-        
-        # Determine candidate pool size for hybrid fusion
+
+        # Determine candidate pool size when reranker is enabled
         if self.settings.reranker_enabled and self.reranker_service:
             candidate_k = self.settings.reranker_candidate_k
         else:
-            candidate_k = max(20, top_k * 3)
+            candidate_k = top_k
 
-        # 1. Fetch dense results
-        start_dense = time.perf_counter()
+        # Generate dense query embedding
+        start_embed = time.perf_counter()
         query_embedding = await run_in_threadpool(self.embedding_service.embed_query, query)
-        dense_hits = await self.vector_store.search(query_embedding, candidate_k, user_id)
-        duration_dense = time.perf_counter() - start_dense
-        logger.info("Query flow: dense search done | hits: %d | duration: %.3fs", len(dense_hits), duration_dense)
+        duration_embed = time.perf_counter() - start_embed
+        logger.info("Query flow: query embedding generated | duration: %.3fs", duration_embed)
 
-        # If BM25 is disabled or service is not active, return dense hits (truncated or reranked)
-        if not self.settings.bm25_enabled or not self.bm25_service:
-            logger.info("Query flow: BM25 search skipped (disabled or unavailable)")
-            chunks = [_hit_to_chunk(hit) for hit in dense_hits]
-            if self.settings.reranker_enabled and self.reranker_service:
-                start_rerank = time.perf_counter()
-                reranked = await self.reranker_service.rerank(query, chunks, top_k)
-                duration_rerank = time.perf_counter() - start_rerank
-                logger.info("Query flow: reranking done | input: %d | output: %d | duration: %.3fs", len(chunks), len(reranked), duration_rerank)
-                return reranked
-            logger.info("Query flow: reranking skipped | output: %d", len(chunks[:top_k]))
-            return chunks[:top_k]
+        # Perform search (hybrid or dense-only)
+        if self.settings.bm25_enabled:
+            start_search = time.perf_counter()
+            hits = await self.vector_store.hybrid_search(
+                query_embedding=query_embedding,
+                query_text=query,
+                top_k=candidate_k,
+                user_id=user_id,
+            )
+            duration_search = time.perf_counter() - start_search
+            logger.info(
+                "Query flow: hybrid search done (dense + BM25 RRF) | hits: %d | duration: %.3fs",
+                len(hits), duration_search,
+            )
+        else:
+            start_search = time.perf_counter()
+            hits = await self.vector_store.search(query_embedding, candidate_k, user_id)
+            duration_search = time.perf_counter() - start_search
+            logger.info(
+                "Query flow: dense-only search done | hits: %d | duration: %.3fs",
+                len(hits), duration_search,
+            )
 
-        # 2. Fetch sparse BM25 results
-        start_sparse = time.perf_counter()
-        try:
-            sparse_hits = await run_in_threadpool(self.bm25_service.search, user_id, query, candidate_k)
-            duration_sparse = time.perf_counter() - start_sparse
-            logger.info("Query flow: BM25 search done | hits: %d | duration: %.3fs", len(sparse_hits), duration_sparse)
-        except Exception as exc:
-            duration_sparse = time.perf_counter() - start_sparse
-            logger.warning("Query flow: BM25 search failed, falling back to dense-only | duration: %.3fs | error: %s", duration_sparse, exc)
-            chunks = [_hit_to_chunk(hit) for hit in dense_hits]
-            if self.settings.reranker_enabled and self.reranker_service:
-                start_rerank = time.perf_counter()
-                reranked = await self.reranker_service.rerank(query, chunks, top_k)
-                duration_rerank = time.perf_counter() - start_rerank
-                logger.info("Query flow: reranking done | input: %d | output: %d | duration: %.3fs", len(chunks), len(reranked), duration_rerank)
-                return reranked
-            logger.info("Query flow: reranking skipped | output: %d", len(chunks[:top_k]))
-            return chunks[:top_k]
+        # Convert VectorSearchHit objects to RetrievedChunk objects
+        chunks = [_hit_to_chunk(hit) for hit in hits]
 
-        # 3. Perform RRF fusion
-        dense_texts = [hit.chunk_text for hit in dense_hits]
-        sparse_texts = [hit.chunk_text for hit in sparse_hits]
-
-        fused_rankings = reciprocal_rank_fusion([dense_texts, sparse_texts])
-        
-        fusion_limit = candidate_k if (self.settings.reranker_enabled and self.reranker_service) else top_k
-        top_fused = fused_rankings[:fusion_limit]
-
-        # 4. Resolve metadata for fused chunks
-        dense_map = {hit.chunk_text: hit for hit in dense_hits}
-        
-        # Check which fused chunks came exclusively from BM25 and lack metadata
-        missing_texts = [text for text, _ in top_fused if text not in dense_map]
-        
-        missing_map = {}
-        if missing_texts:
-            try:
-                missing_hits = await self.vector_store.get_chunks_by_text(missing_texts, user_id)
-                missing_map = {hit.chunk_text: hit for hit in missing_hits}
-            except Exception as exc:
-                logger.error("Failed to query missing chunk metadata from Milvus: %s", exc)
-
-        # Build the final list of RetrievedChunk objects
-        chunks: list[RetrievedChunk] = []
-        for chunk_text, score in top_fused:
-            hit = dense_map.get(chunk_text) or missing_map.get(chunk_text)
-            if hit:
-                chunks.append(
-                    RetrievedChunk(
-                        document_id=hit.document_id,
-                        source_filename=hit.source_filename,
-                        page_number=hit.page_number,
-                        chunk_index=hit.chunk_index,
-                        chunk_text=hit.chunk_text,
-                        score=score,
-                    )
-                )
-            else:
-                # Fallback in the rare case that a BM25 hit has no record in Milvus
-                logger.warning("Fused chunk text not found in Milvus metadata: %s", chunk_text[:50])
-                chunks.append(
-                    RetrievedChunk(
-                        document_id="",
-                        source_filename="Unknown (Sparse)",
-                        page_number=0,
-                        chunk_index=-1,
-                        chunk_text=chunk_text,
-                        score=score,
-                    )
-                )
-
-        # 5. Apply Reranking if enabled
+        # Apply reranking if enabled
         if self.settings.reranker_enabled and self.reranker_service:
             start_rerank = time.perf_counter()
             chunks = await self.reranker_service.rerank(query, chunks, top_k)
             duration_rerank = time.perf_counter() - start_rerank
-            logger.info("Query flow: reranking done | input: %d | output: %d | duration: %.3fs", len(top_fused), len(chunks), duration_rerank)
+            logger.info(
+                "Query flow: reranking done | input: %d | output: %d | duration: %.3fs",
+                len(hits), len(chunks), duration_rerank,
+            )
         else:
+            chunks = chunks[:top_k]
             logger.info("Query flow: reranking skipped | output: %d", len(chunks))
 
         return chunks
