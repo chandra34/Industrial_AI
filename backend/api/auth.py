@@ -33,7 +33,7 @@ async def get_current_user(
         uid = decoded_token.get("uid")
         
         # Sanitize and validate uid format to prevent filter injection
-        if not uid or not isinstance(uid, str) or not all(c.isalnum() or c in "-_" for c in uid):
+        if not uid or not isinstance(uid, str) or not all(c.isalnum() or c in "-_." for c in uid):
             logger.warning("Invalid Firebase uid detected: %s", uid)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

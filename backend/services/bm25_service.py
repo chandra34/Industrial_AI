@@ -184,14 +184,14 @@ class BM25Service:
         remain, the index directory is deleted entirely.
         """
         with self._get_lock(user_id):
-            if not remaining_chunks:
+            corpus = [c.text for c in remaining_chunks if c.text.strip()]
+            if not corpus:
                 idx_path = self._index_path(user_id)
                 if idx_path.exists():
                     shutil.rmtree(idx_path, ignore_errors=True)
                     logger.info("Removed BM25 index directory for user %s (no remaining chunks)", user_id)
                 return
 
-            corpus = [c.text for c in remaining_chunks if c.text.strip()]
             self.build_index(user_id, corpus)
 
     # -- private helpers ----------------------------------------------------

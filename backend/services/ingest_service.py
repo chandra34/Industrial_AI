@@ -4,9 +4,8 @@ import logging
 from uuid import uuid4
 
 from backend.config.settings import Settings
-from backend.pdf.parser import PDFParseError, extract_pages_from_bytes
-from backend.rag.chunking import chunk_pages
 from backend.rag.embeddings import EmbeddingProvider
+from backend.ingestion.pipeline import get_parser
 from backend.services.bm25_service import BM25Service
 from backend.vectordb.milvus_db import MilvusStore
 
@@ -63,30 +62,26 @@ class IngestService:
         logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
 
         try:
-            # PDF parsing
-            start_parse = time.perf_counter()
+            # Document parsing and chunking
+            start_parse_chunk = time.perf_counter()
             try:
-                pages = extract_pages_from_bytes(file_bytes)
-            except PDFParseError as parse_err:
-                logger.exception("Upload flow: Failed to parse uploaded PDF %s", original_name)
+                parser = get_parser(self.settings)
+                chunks = parser.parse(
+                    file_bytes,
+                    document_id=document_id,
+                    source_filename=stored_path.name,
+                )
+            except Exception as parse_err:
+                logger.exception("Upload flow: Failed to parse and chunk uploaded PDF %s", original_name)
                 raise parse_err
-            duration_parse = time.perf_counter() - start_parse
-            logger.info("Upload flow: PDF parsed | pages: %d | duration: %.3fs", len(pages), duration_parse)
-
-            if not pages:
-                raise ValueError("No extractable text found in the uploaded PDF")
-
-            # Chunking
-            start_chunk = time.perf_counter()
-            chunks = chunk_pages(
-                pages,
-                document_id=document_id,
-                source_filename=stored_path.name,
-                settings=self.settings,
+            duration_parse_chunk = time.perf_counter() - start_parse_chunk
+            logger.info(
+                "Upload flow: PDF parsed and chunked | parser: %s | chunks: %d | duration: %.3fs",
+                self.settings.document_parser,
+                len(chunks),
+                duration_parse_chunk,
             )
-            duration_chunk = time.perf_counter() - start_chunk
-            logger.info("Upload flow: chunking done | chunks: %d | duration: %.3fs", len(chunks), duration_chunk)
-            
+
             if not chunks:
                 raise ValueError("PDF parsed successfully but no chunks were generated")
 
@@ -122,7 +117,7 @@ class IngestService:
                 document_id=document_id,
                 filename=original_name,
                 stored_path=str(stored_path),
-                page_count=len(pages),
+                page_count=max((c.page_number for c in chunks), default=1),
                 chunk_count=len(chunks),
                 embedded_count=stored_count,
             )

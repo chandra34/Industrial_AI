@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     embedding_provider: str = Field(default="gemini", alias="EMBEDDING_PROVIDER")
     embedding_model_name: str = Field(default="gemini-embedding-2", alias="EMBEDDING_MODEL_NAME")
     embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
+    document_parser: str = Field(default="pymupdf", alias="DOCUMENT_PARSER")
     chunk_size: int = Field(default=1000, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=150, alias="CHUNK_OVERLAP")
     top_k: int = Field(default=5, alias="TOP_K")

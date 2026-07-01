@@ -116,6 +116,8 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 @app.on_event("startup")
 async def on_startup() -> None:
     """Initialize Firebase, services, and attach them to application state."""
+    if settings.hf_token:
+        os.environ["HF_TOKEN"] = settings.hf_token
     settings.resolved_upload_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting %s", settings.app_name)
 

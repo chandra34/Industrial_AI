@@ -18,3 +18,4 @@ voyageai>=0.2.0
 firebase-admin>=6.5.0
 bm25s>=0.2.0
 PyStemmer>=2.2.0
+docling>=2.0.0
