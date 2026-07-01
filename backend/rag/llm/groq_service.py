@@ -1,17 +1,17 @@
 import logging
-
 from groq import AsyncGroq, APITimeoutError, RateLimitError, APIStatusError
 
 from backend.config.settings import Settings
+from backend.rag.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
 
 
-class LLMService:
+class GroqLLMService(LLMProvider):
     """Generate answers via the Groq chat completions API."""
 
     def __init__(self, settings: Settings) -> None:
-        self.settings = settings
+        super().__init__(settings)
         if not settings.groq_api_key:
             raise ValueError(
                 "GROQ_API_KEY is required. Set it in .env or the environment."
@@ -20,8 +20,9 @@ class LLMService:
         logger.info("Using Groq LLM model %s", settings.llm_model)
 
     async def generate_answer(self, messages: list[dict[str, str]]) -> str:
-        """Send ``messages`` to the LLM and return the assistant reply text."""
+        """Send messages to the LLM and return the assistant reply text."""
         try:
+            logger.info("Generating answer using Groq provider with model: %s", self.settings.llm_model)
             completion = await self.client.chat.completions.create(
                 model=self.settings.llm_model,
                 messages=messages,
@@ -44,4 +45,3 @@ class LLMService:
         except Exception as exc:
             logger.exception("LLM generation failed due to unexpected error")
             raise RuntimeError("An unexpected error occurred during answer generation.") from exc
-

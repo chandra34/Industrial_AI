@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     
 
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+    anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
+    llm_provider: str = Field(default="groq", alias="LLM_PROVIDER")
     llm_model: str = Field(default="llama-3.1-8b-instant", alias="LLM_MODEL")
     llm_temperature: float = Field(default=0.2, alias="LLM_TEMPERATURE")
     llm_max_tokens: int = Field(default=1024, alias="LLM_MAX_TOKENS")
