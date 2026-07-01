@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import logging
 import time
 
-from fastapi.concurrency import run_in_threadpool
 
 from backend.config.settings import Settings
 from backend.rag.embeddings import EmbeddingProvider
@@ -58,7 +57,7 @@ class RetrievalService:
 
         # Generate dense query embedding
         start_embed = time.perf_counter()
-        query_embedding = await run_in_threadpool(self.embedding_service.embed_query, query)
+        query_embedding = await self.embedding_service.embed_query(query)
         duration_embed = time.perf_counter() - start_embed
         logger.info("Query flow: query embedding generated | duration: %.3fs", duration_embed)
 

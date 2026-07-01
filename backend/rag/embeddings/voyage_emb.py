@@ -17,24 +17,24 @@ class VoyageEmbedding(EmbeddingProvider):
             raise ValueError(
                 "VOYAGE_API_KEY is required. Set it in .env or the environment."
             )
-        self.client = voyageai.Client(api_key=settings.voyage_api_key)
+        self.client = voyageai.AsyncClient(api_key=settings.voyage_api_key)
         logger.info(
             "Using Voyage embedding model %s",
             settings.embedding_model_name,
         )
 
-    def _embed_batch(self, texts: list[str]) -> np.ndarray:
+    async def _embed_batch(self, texts: list[str]) -> np.ndarray:
         # Fallback method if called directly; defaults to None input_type.
-        result = self.client.embed(
+        result = await self.client.embed(
             texts=texts,
             model=self.settings.embedding_model_name,
             output_dimension=self.settings.milvus_dimension
         )
         return np.array(result.embeddings, dtype=np.float32)
 
-    def embed_query(self, query: str) -> np.ndarray:
+    async def embed_query(self, query: str) -> np.ndarray:
         """Override to specifically use input_type='query'."""
-        result = self.client.embed(
+        result = await self.client.embed(
             texts=[query],
             model=self.settings.embedding_model_name,
             input_type="query",
@@ -42,7 +42,7 @@ class VoyageEmbedding(EmbeddingProvider):
         )
         return np.array(result.embeddings, dtype=np.float32)
 
-    def embed_texts(self, texts: Iterable[str]) -> np.ndarray:
+    async def embed_texts(self, texts: Iterable[str]) -> np.ndarray:
         """Override to specifically use input_type='document' and handle batching."""
         text_list = list(texts)
         if not text_list:
@@ -53,7 +53,7 @@ class VoyageEmbedding(EmbeddingProvider):
         for start in range(0, len(text_list), batch_size):
             batch = text_list[start : start + batch_size]
             
-            result = self.client.embed(
+            result = await self.client.embed(
                 texts=batch,
                 model=self.settings.embedding_model_name,
                 input_type="document",

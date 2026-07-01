@@ -35,8 +35,8 @@ class GeminiEmbedding(EmbeddingProvider):
         norms = np.where(norms == 0, 1, norms)
         return (vectors / norms).astype(np.float32)
 
-    def _embed_batch(self, texts: list[str]) -> np.ndarray:
-        result = self.client.models.embed_content(
+    async def _embed_batch(self, texts: list[str]) -> np.ndarray:
+        result = await self.client.aio.models.embed_content(
             model=self.settings.embedding_model_name,
             contents=texts,
             config=self._embed_config(),
