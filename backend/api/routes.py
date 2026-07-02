@@ -94,14 +94,17 @@ async def upload_pdf(
     max_bytes = settings.max_upload_mb * 1024 * 1024
 
     # Read safely in chunks to prevent memory explosion
-    file_bytes = bytearray()
-    while chunk := await file.read(UPLOAD_BUFFER_SIZE):  # Read in configured buffer size
-        file_bytes.extend(chunk)
-        if len(file_bytes) > max_bytes:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File exceeds maximum size of {settings.max_upload_mb} MB",
-            )
+    try:
+        file_bytes = bytearray()
+        while chunk := await file.read(UPLOAD_BUFFER_SIZE):  # Read in configured buffer size
+            file_bytes.extend(chunk)
+            if len(file_bytes) > max_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File exceeds maximum size of {settings.max_upload_mb} MB",
+                )
+    finally:
+        await file.close()
     
     # Cast back to bytes for downstream processing
     file_bytes = bytes(file_bytes)

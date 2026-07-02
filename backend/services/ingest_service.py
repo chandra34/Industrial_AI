@@ -115,6 +115,13 @@ class IngestService:
                 embedded_count=stored_count,
             )
         except Exception:
+            # Clean up the orphaned vectors from Milvus since ingestion failed
+            try:
+                await self.vector_store.delete_document(document_id, user_id)
+                logger.info("Cleaned up orphaned vectors from Milvus due to ingestion failure: %s", document_id)
+            except Exception as e:
+                logger.warning("Could not delete orphaned vectors for document %s from Milvus: %s", document_id, e)
+
             # Clean up the orphaned file on disk since ingestion failed
             if stored_path.exists():
                 try:
