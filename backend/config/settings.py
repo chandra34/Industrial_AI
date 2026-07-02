@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     milvus_host: str = Field(default="localhost", alias="MILVUS_HOST")
     milvus_port: int = Field(default=19530, alias="MILVUS_PORT")
     milvus_uri: str | None = Field(default="./milvus_local.db", alias="MILVUS_URI")
+    milvus_token: str | None = Field(default=None, alias="MILVUS_TOKEN")
     milvus_collection_name: str = Field(default="rag_documents", alias="MILVUS_COLLECTION_NAME")
     milvus_alias: str = Field(default="default", alias="MILVUS_ALIAS")
     milvus_dimension: int = Field(default=1536, alias="MILVUS_DIMENSION")
