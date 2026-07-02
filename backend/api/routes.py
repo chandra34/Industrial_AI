@@ -23,18 +23,16 @@ from backend.services.document_service import (
     DocumentFileNotFoundError,
 )
 from backend.api.auth import get_current_user, FirebaseUser
+from backend.api.dependencies import (
+    get_ingest_service,
+    get_rag_pipeline,
+    get_document_service,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 UPLOAD_BUFFER_SIZE = 1024 * 1024  # 1MB chunk size for reading file uploads
-
-
-def _get_state_service(request: Request, name: str):
-    service = getattr(request.app.state, name, None)
-    if service is None:
-        raise HTTPException(status_code=503, detail=f"{name} is not ready")
-    return service
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -50,9 +48,9 @@ async def health() -> HealthResponse:
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_pdf(
-    request: Request,
     file: UploadFile = File(...),
     current_user: FirebaseUser = Depends(get_current_user),
+    ingest_service: IngestService = Depends(get_ingest_service),
 ) -> UploadResponse:
     """Accept a PDF upload, ingest it, and index chunks for the authenticated user."""
     if not file.filename:
@@ -76,8 +74,6 @@ async def upload_pdf(
     # Cast back to bytes for downstream processing
     file_bytes = bytes(file_bytes)
 
-    ingest_service: IngestService = _get_state_service(request, "ingest_service")
-
     try:
         result = await ingest_service.ingest_pdf(file_bytes, file.filename, current_user.uid)
     except Exception as exc:
@@ -96,12 +92,11 @@ async def upload_pdf(
 
 @router.post("/query", response_model=QueryResponse)
 async def query_documents(
-    request: Request,
     payload: QueryRequest,
     current_user: FirebaseUser = Depends(get_current_user),
+    pipeline: RAGPipeline = Depends(get_rag_pipeline),
 ) -> QueryResponse:
     """Run RAG retrieval and generation for a user question."""
-    pipeline: RAGPipeline = _get_state_service(request, "rag_pipeline")
 
     try:
         result = await pipeline.answer_question(payload.question, user_id=current_user.uid, top_k=payload.top_k)
@@ -129,11 +124,10 @@ async def query_documents(
 
 @router.get("/documents", response_model=DocumentListResponse)
 async def list_documents(
-    request: Request,
     current_user: FirebaseUser = Depends(get_current_user),
+    document_service: DocumentService = Depends(get_document_service),
 ) -> DocumentListResponse:
     """List indexed documents belonging to the authenticated user."""
-    document_service: DocumentService = _get_state_service(request, "document_service")
     try:
         docs = await document_service.list_user_documents(current_user.uid)
         items = [
@@ -153,15 +147,13 @@ async def list_documents(
 
 @router.delete("/documents/{document_id}", response_model=DeleteResponse)
 async def delete_document(
-    request: Request,
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
+    document_service: DocumentService = Depends(get_document_service),
 ) -> DeleteResponse:
     """Delete a document's vectors and raw file for the user."""
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
-    
-    document_service: DocumentService = _get_state_service(request, "document_service")
 
     try:
         msg = await document_service.delete_user_document(document_id, current_user.uid)
@@ -175,15 +167,13 @@ async def delete_document(
 
 @router.get("/documents/{document_id}/download")
 async def download_document(
-    request: Request,
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
+    document_service: DocumentService = Depends(get_document_service),
 ) -> FileResponse:
     """Download the original PDF file for an owned document."""
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
-    
-    document_service: DocumentService = _get_state_service(request, "document_service")
 
     try:
         file_path, filename = await document_service.get_download_path(document_id, current_user.uid)
