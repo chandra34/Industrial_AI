@@ -7,6 +7,7 @@ from backend.config.settings import Settings
 from backend.rag.embeddings import EmbeddingProvider
 from backend.ingestion.pipeline import get_parser
 from backend.vectordb.milvus_db import MilvusStore
+from fastapi.concurrency import run_in_threadpool
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,8 @@ class IngestService:
             start_parse_chunk = time.perf_counter()
             try:
                 parser = get_parser(self.settings)
-                chunks = parser.parse(
+                chunks = await run_in_threadpool(
+                    parser.parse,
                     file_bytes,
                     document_id=document_id,
                     source_filename=stored_path.name,

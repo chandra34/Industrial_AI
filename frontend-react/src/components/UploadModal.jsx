@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import './UploadModal.css';
-import { uploadPDF } from '../api/client';
+import { uploadPDF, getJobStatus } from '../api/client';
 
 // SVG Icons
 const FileUploadIcon = () => (
@@ -110,15 +110,38 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     const startTime = Date.now();
 
     try {
-      const result = await uploadPDF(file);
+      const uploadResponse = await uploadPDF(file);
+      const jobId = uploadResponse.job_id;
+
+      // Poll the job status every 1 second
+      let jobStatus = 'pending';
+      let jobResult = null;
+      let pollCount = 0;
+      const maxPolls = 180; // 3 minutes timeout
+
+      while ((jobStatus === 'pending' || jobStatus === 'processing') && pollCount < maxPolls) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const statusResponse = await getJobStatus(jobId);
+        jobStatus = statusResponse.status;
+        jobResult = statusResponse.result;
+        if (jobStatus === 'failed') {
+          throw new Error(statusResponse.error || 'Background processing failed');
+        }
+        pollCount++;
+      }
+
+      if (jobStatus !== 'completed') {
+        throw new Error('Upload took too long to process');
+      }
+
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       
       setElapsedTime(elapsed);
-      setUploadResult(result);
+      setUploadResult(jobResult);
       setIsSuccess(true);
       
       // Update parent list
-      onUploaded(result);
+      onUploaded(jobResult);
     } catch (err) {
       setError(err.message || 'Upload failed');
       setUploading(false);

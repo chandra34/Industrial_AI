@@ -20,6 +20,7 @@ from backend.rag.retrieval import RetrievalService
 from backend.services.ingest_service import IngestService
 from backend.services.reranker_service import RerankerService
 from backend.services.document_service import DocumentService
+from backend.services.job_status_service import JobStatusService
 from backend.vectordb.milvus_db import MilvusStore
 from backend.utils.logging_context import CorrelationFilter, request_id_var, route_var, clear_context
 
@@ -168,6 +169,7 @@ async def on_startup() -> None:
     app.state.reranker_service = reranker_service
     app.state.ingest_service = IngestService(settings, vector_store, embedding_service)
     app.state.document_service = DocumentService(settings, vector_store)
+    app.state.job_status_service = JobStatusService()
     app.state.rag_pipeline = RAGPipeline(settings, retrieval_service, llm_service)
 
     logger.info("Application startup complete")
