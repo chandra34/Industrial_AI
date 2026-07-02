@@ -1,9 +1,12 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, BackgroundTasks
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from uuid import uuid4
+
+from redis import Redis
+from rq import Queue
 
 from backend.config.settings import get_settings
 from backend.schemas.schemas import (
@@ -36,11 +39,17 @@ from backend.api.dependencies import (
     get_db,
 )
 from backend.database.session import SessionLocal
+from backend.tasks import run_ingest_task
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+settings = get_settings()
+redis_conn = Redis.from_url(settings.redis_url)
+task_queue = Queue("ingestion", connection=redis_conn)
+
 UPLOAD_BUFFER_SIZE = 1024 * 1024  # 1MB chunk size for reading file uploads
+
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -54,41 +63,10 @@ async def health() -> HealthResponse:
     )
 
 
-async def run_ingest_in_background(
-    job_id: str,
-    file_bytes: bytes,
-    filename: str,
-    user_id: str,
-    ingest_service: IngestService,
-    job_status_service: JobStatusService,
-) -> None:
-    # Background tasks run outside the request lifecycle, so create a dedicated session
-    db = SessionLocal()
-    try:
-        job_status_service.update_status(db, job_id, "processing")
-        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id, db=db)
-        upload_response = UploadResponse(
-            document_id=result.document_id,
-            filename=result.filename,
-            stored_path=result.stored_path,
-            page_count=result.page_count,
-            chunk_count=result.chunk_count,
-            embedded_count=result.embedded_count,
-        )
-        job_status_service.update_status(db, job_id, "completed", result=upload_response)
-    except Exception as exc:
-        logger.exception("Background ingestion failed for %s", filename)
-        job_status_service.update_status(db, job_id, "failed", error=str(exc))
-    finally:
-        db.close()
-
-
 @router.post("/upload", response_model=UploadJobAcceptedResponse, status_code=202)
 async def upload_pdf(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: FirebaseUser = Depends(get_current_user),
-    ingest_service: IngestService = Depends(get_ingest_service),
     job_status_service: JobStatusService = Depends(get_job_status_service),
     db: Session = Depends(get_db),
 ) -> UploadJobAcceptedResponse:
@@ -120,14 +98,13 @@ async def upload_pdf(
     job_id = uuid4().hex
     job_status_service.create_job(db, job_id, current_user.uid)
 
-    background_tasks.add_task(
-        run_ingest_in_background,
+    task_queue.enqueue(
+        run_ingest_task,
         job_id,
         file_bytes,
         file.filename,
         current_user.uid,
-        ingest_service,
-        job_status_service,
+        job_id=job_id,
     )
 
     return UploadJobAcceptedResponse(
