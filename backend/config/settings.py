@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     hf_token: str = Field(default="", alias="HF_TOKEN")
     reranker_candidate_k: int = Field(default=25, alias="RERANKER_CANDIDATE_K")
 
+    # Redis Configuration
+    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
+
     @property
     def resolved_milvus_uri(self) -> str:
         """Absolute Milvus URI: .db file for Lite, or http(s) for a remote server."""
