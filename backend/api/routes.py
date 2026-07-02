@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, BackgroundTasks
 from fastapi.responses import FileResponse
+from uuid import uuid4
 
 from backend.config.settings import get_settings
 from backend.schemas.schemas import (
@@ -14,6 +15,8 @@ from backend.schemas.schemas import (
     DocumentListResponse,
     DeleteResponse,
     DocumentItem,
+    UploadJobAcceptedResponse,
+    JobStatusResponse,
 )
 from backend.rag.pipeline import RAGPipeline
 from backend.services.ingest_service import IngestService
@@ -22,11 +25,13 @@ from backend.services.document_service import (
     DocumentNotFoundError,
     DocumentFileNotFoundError,
 )
+from backend.services.job_status_service import JobStatusService
 from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import (
     get_ingest_service,
     get_rag_pipeline,
     get_document_service,
+    get_job_status_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,13 +51,40 @@ async def health() -> HealthResponse:
     )
 
 
-@router.post("/upload", response_model=UploadResponse)
+async def run_ingest_in_background(
+    job_id: str,
+    file_bytes: bytes,
+    filename: str,
+    user_id: str,
+    ingest_service: IngestService,
+    job_status_service: JobStatusService,
+) -> None:
+    job_status_service.update_status(job_id, "processing")
+    try:
+        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id)
+        upload_response = UploadResponse(
+            document_id=result.document_id,
+            filename=result.filename,
+            stored_path=result.stored_path,
+            page_count=result.page_count,
+            chunk_count=result.chunk_count,
+            embedded_count=result.embedded_count,
+        )
+        job_status_service.update_status(job_id, "completed", result=upload_response)
+    except Exception as exc:
+        logger.exception("Background ingestion failed for %s", filename)
+        job_status_service.update_status(job_id, "failed", error=str(exc))
+
+
+@router.post("/upload", response_model=UploadJobAcceptedResponse, status_code=202)
 async def upload_pdf(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: FirebaseUser = Depends(get_current_user),
     ingest_service: IngestService = Depends(get_ingest_service),
-) -> UploadResponse:
-    """Accept a PDF upload, ingest it, and index chunks for the authenticated user."""
+    job_status_service: JobStatusService = Depends(get_job_status_service),
+) -> UploadJobAcceptedResponse:
+    """Accept a PDF upload, start ingestion in the background, and return a job identifier."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="A file name is required")
     if Path(file.filename).suffix.lower() != ".pdf":
@@ -74,20 +106,49 @@ async def upload_pdf(
     # Cast back to bytes for downstream processing
     file_bytes = bytes(file_bytes)
 
-    try:
-        result = await ingest_service.ingest_pdf(file_bytes, file.filename, current_user.uid)
-    except Exception as exc:
-        logger.exception("Upload failed for %s", file.filename)
-        raise HTTPException(status_code=500, detail="Failed to process and index the uploaded PDF document.") from exc
+    job_id = uuid4().hex
+    job_status_service.create_job(job_id, current_user.uid)
 
-    return UploadResponse(
-        document_id=result.document_id,
-        filename=result.filename,
-        stored_path=result.stored_path,
-        page_count=result.page_count,
-        chunk_count=result.chunk_count,
-        embedded_count=result.embedded_count,
+    background_tasks.add_task(
+        run_ingest_in_background,
+        job_id,
+        file_bytes,
+        file.filename,
+        current_user.uid,
+        ingest_service,
+        job_status_service,
     )
+
+    return UploadJobAcceptedResponse(
+        job_id=job_id,
+        message="Document upload accepted. Processing in the background."
+    )
+
+
+@router.get("/jobs/{job_id}", response_model=JobStatusResponse)
+async def get_job_status(
+    job_id: str,
+    current_user: FirebaseUser = Depends(get_current_user),
+    job_status_service: JobStatusService = Depends(get_job_status_service),
+) -> JobStatusResponse:
+    """Retrieve status and result of a background document ingestion job."""
+    job = job_status_service.get_job(job_id, current_user.uid)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found or access denied")
+
+    return JobStatusResponse(
+        job_id=job_id,
+        status=job["status"],
+        message=f"Job status is {job['status']}",
+        result=job["result"],
+        error=job["error"],
+    )
+
+
+def _clean_filename(filename: str, doc_id: str) -> str:
+    if filename and filename.startswith(f"{doc_id}_"):
+        return filename[len(doc_id) + 1 :]
+    return filename or "Unknown"
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -110,7 +171,7 @@ async def query_documents(
         source_chunks=[
             SourceChunkResponse(
                 document_id=chunk.document_id,
-                source_filename=chunk.source_filename,
+                source_filename=_clean_filename(chunk.source_filename, chunk.document_id),
                 page_number=chunk.page_number,
                 chunk_index=chunk.chunk_index,
                 score=chunk.score,

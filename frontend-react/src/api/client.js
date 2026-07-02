@@ -158,5 +158,16 @@ export async function downloadDocument(documentId, filename) {
   window.URL.revokeObjectURL(blobUrl);
 }
 
+/**
+ * Fetches the status and results of a background ingestion job.
+ *
+ * @async
+ * @param {string} jobId - The unique ID of the background job.
+ * @returns {Promise<{job_id: string, status: 'pending'|'processing'|'completed'|'failed', result?: any, error?: string}>} The job status object.
+ */
+export async function getJobStatus(jobId) {
+  return request('GET', `/jobs/${jobId}`);
+}
+
 
 
