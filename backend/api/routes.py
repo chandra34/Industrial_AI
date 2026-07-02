@@ -17,7 +17,11 @@ from backend.schemas.schemas import (
 )
 from backend.rag.pipeline import RAGPipeline
 from backend.services.ingest_service import IngestService
-from backend.vectordb.milvus_db import MilvusStore
+from backend.services.document_service import (
+    DocumentService,
+    DocumentNotFoundError,
+    DocumentFileNotFoundError,
+)
 from backend.api.auth import get_current_user, FirebaseUser
 
 logger = logging.getLogger(__name__)
@@ -129,9 +133,9 @@ async def list_documents(
     current_user: FirebaseUser = Depends(get_current_user),
 ) -> DocumentListResponse:
     """List indexed documents belonging to the authenticated user."""
-    vector_store: MilvusStore = _get_state_service(request, "vector_store")
+    document_service: DocumentService = _get_state_service(request, "document_service")
     try:
-        docs = await vector_store.list_documents(current_user.uid)
+        docs = await document_service.list_user_documents(current_user.uid)
         items = [
             DocumentItem(
                 document_id=doc["document_id"],
@@ -157,42 +161,13 @@ async def delete_document(
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
     
-    vector_store: MilvusStore = _get_state_service(request, "vector_store")
-    settings = get_settings()
-    upload_dir = settings.resolved_upload_dir
-
-    # Verify the document belongs to the current user before any deletion
-    try:
-        docs = await vector_store.list_documents(current_user.uid)
-        target_doc = next((d for d in docs if d["document_id"] == document_id), None)
-        if not target_doc:
-            raise HTTPException(status_code=404, detail="Document not found or access denied")
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.exception("Failed to verify document ownership for %s", document_id)
-        raise HTTPException(status_code=500, detail="Failed to verify document ownership.") from exc
+    document_service: DocumentService = _get_state_service(request, "document_service")
 
     try:
-        await vector_store.delete_document(document_id, current_user.uid)
-        
-        deleted_file = False
-        exact_file_path = upload_dir / f"{document_id}_{target_doc['filename']}"
-        if exact_file_path.exists():
-            try:
-                exact_file_path.unlink()
-                deleted_file = True
-                logger.info("Deleted raw PDF file: %s", exact_file_path)
-            except Exception as e:
-                logger.warning("Could not delete file %s from disk: %s", exact_file_path, e)
-
-
-        msg = f"Successfully deleted document {document_id}"
-        if not deleted_file:
-            msg += " (no raw file found on disk)"
+        msg = await document_service.delete_user_document(document_id, current_user.uid)
         return DeleteResponse(message=msg)
-    except HTTPException:
-        raise
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         logger.exception("Failed to delete document %s", document_id)
         raise HTTPException(status_code=500, detail="An error occurred while deleting the document.") from exc
@@ -208,33 +183,20 @@ async def download_document(
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
     
-    settings = get_settings()
-    upload_dir = settings.resolved_upload_dir
-    vector_store: MilvusStore = _get_state_service(request, "vector_store")
+    document_service: DocumentService = _get_state_service(request, "document_service")
 
     try:
-        # Check if the document belongs to the user
-        docs = await vector_store.list_documents(current_user.uid)
-        target_doc = next((d for d in docs if d["document_id"] == document_id), None)
-        if not target_doc:
-            raise HTTPException(status_code=404, detail="Document not found or access denied")
-    except HTTPException:
-        raise
+        file_path, filename = await document_service.get_download_path(document_id, current_user.uid)
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type="application/pdf"
+        )
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except DocumentFileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
-        logger.exception("Failed to authorize document access")
-        raise HTTPException(status_code=500, detail="Failed to authorize document access.") from exc
-
-    if not upload_dir.exists():
-        raise HTTPException(status_code=404, detail="Uploads directory does not exist")
-
-    target_file = upload_dir / f"{document_id}_{target_doc['filename']}"
-
-    if not target_file.exists():
-        raise HTTPException(status_code=404, detail="Document file not found on disk")
-
-    return FileResponse(
-        path=target_file,
-        filename=target_doc['filename'],
-        media_type="application/pdf"
-    )
+        logger.exception("Failed to download document %s", document_id)
+        raise HTTPException(status_code=500, detail="Failed to authorize or locate document download path.") from exc
 
