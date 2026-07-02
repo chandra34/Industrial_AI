@@ -33,3 +33,6 @@ backend/uploads/*
 
 # Logs
 backend/logs/*
+
+# Local SQLite metadata database
+backend/metadata.db
