@@ -3,6 +3,7 @@ from backend.services.ingest_service import IngestService
 from backend.rag.pipeline import RAGPipeline
 from backend.services.document_service import DocumentService
 from backend.services.job_status_service import JobStatusService
+from backend.database.session import get_db  # noqa: F401 – re-exported for route injection
 
 
 def get_ingest_service(request: Request) -> IngestService:

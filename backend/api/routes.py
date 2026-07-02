@@ -26,13 +26,16 @@ from backend.services.document_service import (
     DocumentFileNotFoundError,
 )
 from backend.services.job_status_service import JobStatusService
+from sqlalchemy.orm import Session
 from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import (
     get_ingest_service,
     get_rag_pipeline,
     get_document_service,
     get_job_status_service,
+    get_db,
 )
+from backend.database.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -59,9 +62,11 @@ async def run_ingest_in_background(
     ingest_service: IngestService,
     job_status_service: JobStatusService,
 ) -> None:
-    job_status_service.update_status(job_id, "processing")
+    # Background tasks run outside the request lifecycle, so create a dedicated session
+    db = SessionLocal()
     try:
-        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id)
+        job_status_service.update_status(db, job_id, "processing")
+        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id, db=db)
         upload_response = UploadResponse(
             document_id=result.document_id,
             filename=result.filename,
@@ -70,10 +75,12 @@ async def run_ingest_in_background(
             chunk_count=result.chunk_count,
             embedded_count=result.embedded_count,
         )
-        job_status_service.update_status(job_id, "completed", result=upload_response)
+        job_status_service.update_status(db, job_id, "completed", result=upload_response)
     except Exception as exc:
         logger.exception("Background ingestion failed for %s", filename)
-        job_status_service.update_status(job_id, "failed", error=str(exc))
+        job_status_service.update_status(db, job_id, "failed", error=str(exc))
+    finally:
+        db.close()
 
 
 @router.post("/upload", response_model=UploadJobAcceptedResponse, status_code=202)
@@ -83,6 +90,7 @@ async def upload_pdf(
     current_user: FirebaseUser = Depends(get_current_user),
     ingest_service: IngestService = Depends(get_ingest_service),
     job_status_service: JobStatusService = Depends(get_job_status_service),
+    db: Session = Depends(get_db),
 ) -> UploadJobAcceptedResponse:
     """Accept a PDF upload, start ingestion in the background, and return a job identifier."""
     if not file.filename:
@@ -110,7 +118,7 @@ async def upload_pdf(
     file_bytes = bytes(file_bytes)
 
     job_id = uuid4().hex
-    job_status_service.create_job(job_id, current_user.uid)
+    job_status_service.create_job(db, job_id, current_user.uid)
 
     background_tasks.add_task(
         run_ingest_in_background,
@@ -133,9 +141,10 @@ async def get_job_status(
     job_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
     job_status_service: JobStatusService = Depends(get_job_status_service),
+    db: Session = Depends(get_db),
 ) -> JobStatusResponse:
     """Retrieve status and result of a background document ingestion job."""
-    job = job_status_service.get_job(job_id, current_user.uid)
+    job = job_status_service.get_job(db, job_id, current_user.uid)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 
@@ -190,10 +199,11 @@ async def query_documents(
 async def list_documents(
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
+    db: Session = Depends(get_db),
 ) -> DocumentListResponse:
     """List indexed documents belonging to the authenticated user."""
     try:
-        docs = await document_service.list_user_documents(current_user.uid)
+        docs = await document_service.list_user_documents(db, current_user.uid)
         items = [
             DocumentItem(
                 document_id=doc["document_id"],
@@ -214,13 +224,14 @@ async def delete_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
+    db: Session = Depends(get_db),
 ) -> DeleteResponse:
     """Delete a document's vectors and raw file for the user."""
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
 
     try:
-        msg = await document_service.delete_user_document(document_id, current_user.uid)
+        msg = await document_service.delete_user_document(db, document_id, current_user.uid)
         return DeleteResponse(message=msg)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -234,13 +245,14 @@ async def download_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
+    db: Session = Depends(get_db),
 ) -> FileResponse:
     """Download the original PDF file for an owned document."""
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
 
     try:
-        file_path, filename = await document_service.get_download_path(document_id, current_user.uid)
+        file_path, filename = await document_service.get_download_path(db, document_id, current_user.uid)
         return FileResponse(
             path=file_path,
             filename=filename,

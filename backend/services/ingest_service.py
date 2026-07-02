@@ -3,7 +3,10 @@ from pathlib import Path
 import logging
 from uuid import uuid4
 
+from sqlalchemy.orm import Session
+
 from backend.config.settings import Settings
+from backend.database.models import Document
 from backend.rag.embeddings import EmbeddingProvider
 from backend.ingestion.pipeline import get_parser
 from backend.vectordb.milvus_db import MilvusStore
@@ -48,7 +51,7 @@ class IngestService:
         stored_path.write_bytes(file_bytes)
         return stored_path, document_id
 
-    async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str) -> IngestionResult:
+    async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str, db: Session | None = None) -> IngestionResult:
         """Ingest a PDF for ``user_id`` and return indexing metadata."""
         import time
         from backend.utils.logging_context import document_id_var
@@ -105,12 +108,28 @@ class IngestService:
             
             logger.info("Indexed document %s for user %s with %s chunks", document_id, user_id, stored_count)
 
+            # Persist document metadata to the relational database
+            page_count = max((c.page_number for c in chunks), default=1)
+            if db is not None:
+                doc_record = Document(
+                    id=document_id,
+                    user_id=user_id,
+                    filename=original_name,
+                    stored_path=str(stored_path),
+                    page_count=page_count,
+                    chunk_count=len(chunks),
+                    embedded_count=stored_count,
+                )
+                db.add(doc_record)
+                db.commit()
+                logger.info("Upload flow: document metadata persisted to database | document_id: %s", document_id)
+
             logger.info("Upload flow: request completed successfully | document_id: %s", document_id)
             return IngestionResult(
                 document_id=document_id,
                 filename=original_name,
                 stored_path=str(stored_path),
-                page_count=max((c.page_number for c in chunks), default=1),
+                page_count=page_count,
                 chunk_count=len(chunks),
                 embedded_count=stored_count,
             )

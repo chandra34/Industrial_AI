@@ -122,6 +122,12 @@ async def on_startup() -> None:
     settings.resolved_upload_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting %s", settings.app_name)
 
+    # Initialize metadata database tables
+    from backend.database.session import engine
+    from backend.database.models import Base
+    Base.metadata.create_all(bind=engine)
+    logger.info("Metadata database tables initialized")
+
     # Initialize Firebase Admin SDK
     if not firebase_admin._apps:
         try:
