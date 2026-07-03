@@ -450,62 +450,6 @@ class MilvusStore:
 
         return hits
 
-    async def list_documents(self, user_id: str) -> list[dict]:
-        """List all unique documents and compute page/chunk metadata for a specific user."""
-        if not await self._async_client.has_collection(self.collection_name):
-            return []
-
-        docs_map: dict[str, dict] = {}
-        page_limit = 5000
-        offset = 0
-        safe_user_id = _sanitize_filter_value(user_id, "user_id")
-
-        while True:
-            try:
-                results = await self._async_client.query(
-                    collection_name=self.collection_name,
-                    filter=f"id >= 0 and user_id == '{safe_user_id}'",
-                    output_fields=["document_id", "source_filename", "page_number"],
-                    limit=page_limit,
-                    offset=offset,
-                )
-            except MilvusException as exc:
-                logger.error("Failed to query documents from Milvus: %s", exc)
-                return list(docs_map.values())
-
-            if not results:
-                break
-
-            for row in results:
-                doc_id = row.get("document_id")
-                filename = row.get("source_filename")
-                page_num = row.get("page_number", 1)
-                if not doc_id:
-                    continue
-
-                if filename and filename.startswith(f"{doc_id}_"):
-                    pretty_name = filename[len(doc_id) + 1 :]
-                else:
-                    pretty_name = filename or "Unknown"
-
-                if doc_id not in docs_map:
-                    docs_map[doc_id] = {
-                        "document_id": doc_id,
-                        "filename": pretty_name,
-                        "page_count": 0,
-                        "chunk_count": 0,
-                    }
-                docs_map[doc_id]["chunk_count"] += 1
-                if page_num > docs_map[doc_id]["page_count"]:
-                    docs_map[doc_id]["page_count"] = page_num
-
-            if len(results) < page_limit:
-                break
-
-            offset += page_limit
-
-        return list(docs_map.values())
-
     async def delete_document(self, document_id: str, user_id: str) -> None:
         """Delete all vectors (dense and sparse) for the specified document_id and user_id.
 

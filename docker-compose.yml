@@ -12,6 +12,7 @@ services:
     build: .
     ports:
       - "8000:8000"
+    restart: unless-stopped
     depends_on:
       - redis
     environment:
@@ -24,6 +25,7 @@ services:
   worker:
     build: .
     command: python -m backend.worker
+    restart: unless-stopped
     depends_on:
       - redis
     environment:
