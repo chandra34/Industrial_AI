@@ -16,7 +16,8 @@ def main():
     redis_conn = Redis.from_url(settings.redis_url)
     
     # Pass connection directly to both Queue and SimpleWorker
-    queue = Queue("ingestion", connection=redis_conn)
+    from rq.serializers import JSONSerializer
+    queue = Queue("ingestion", connection=redis_conn, serializer=JSONSerializer)
     worker = SimpleWorker([queue], connection=redis_conn)
     worker.work()
 
