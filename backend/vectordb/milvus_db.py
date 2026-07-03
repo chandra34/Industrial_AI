@@ -488,3 +488,12 @@ class MilvusStore:
             logger.info("Closed asynchronous Milvus client connection")
         except Exception as e:
             logger.warning("Failed to close asynchronous Milvus client: %s", e)
+
+    def check_health(self) -> bool:
+        """Verify connection to Milvus by checking if list_collections works."""
+        try:
+            self._client.list_collections()
+            return True
+        except Exception as exc:
+            logger.error("Milvus health check failed: %s", exc)
+            return False
