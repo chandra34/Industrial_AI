@@ -58,15 +58,18 @@ class IngestService:
         
         logger.info("Upload flow: request received | filename: %s | size: %d bytes", original_name, len(file_bytes))
         
-        if not file_bytes:
-            raise ValueError("Uploaded file is empty")
-
-        stored_path, document_id = self._save_upload(file_bytes, original_name)
-        document_id_var.set(document_id)
-        
-        logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
+        stored_path = None
+        document_id = None
 
         try:
+            if not file_bytes:
+                raise ValueError("Uploaded file is empty")
+
+            stored_path, document_id = self._save_upload(file_bytes, original_name)
+            document_id_var.set(document_id)
+            
+            logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
+
             # Document parsing and chunking
             start_parse_chunk = time.perf_counter()
             try:
@@ -135,14 +138,15 @@ class IngestService:
             )
         except Exception:
             # Clean up the orphaned vectors from Milvus since ingestion failed
-            try:
-                await self.vector_store.delete_document(document_id, user_id)
-                logger.info("Cleaned up orphaned vectors from Milvus due to ingestion failure: %s", document_id)
-            except Exception as e:
-                logger.warning("Could not delete orphaned vectors for document %s from Milvus: %s", document_id, e)
+            if document_id is not None:
+                try:
+                    await self.vector_store.delete_document(document_id, user_id)
+                    logger.info("Cleaned up orphaned vectors from Milvus due to ingestion failure: %s", document_id)
+                except Exception as e:
+                    logger.warning("Could not delete orphaned vectors for document %s from Milvus: %s", document_id, e)
 
             # Clean up the orphaned file on disk since ingestion failed
-            if stored_path.exists():
+            if stored_path is not None and stored_path.exists():
                 try:
                     stored_path.unlink()
                     logger.info("Cleaned up orphaned file from disk due to ingestion failure: %s", stored_path)
