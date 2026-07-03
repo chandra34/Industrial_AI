@@ -46,7 +46,8 @@ router = APIRouter()
 
 settings = get_settings()
 redis_conn = Redis.from_url(settings.redis_url)
-task_queue = Queue("ingestion", connection=redis_conn)
+from rq.serializers import JSONSerializer
+task_queue = Queue("ingestion", connection=redis_conn, serializer=JSONSerializer)
 
 UPLOAD_BUFFER_SIZE = 1024 * 1024  # 1MB chunk size for reading file uploads
 
@@ -98,10 +99,13 @@ async def upload_pdf(
     job_id = uuid4().hex
     job_status_service.create_job(db, job_id, current_user.uid)
 
+    import base64
+    file_bytes_b64 = base64.b64encode(file_bytes).decode("utf-8")
+
     task_queue.enqueue(
         run_ingest_task,
         job_id,
-        file_bytes,
+        file_bytes_b64,
         file.filename,
         current_user.uid,
         job_id=job_id,

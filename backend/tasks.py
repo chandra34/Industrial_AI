@@ -10,19 +10,19 @@ from backend.schemas.schemas import UploadResponse
 
 logger = logging.getLogger(__name__)
 
-def run_ingest_task(job_id: str, file_bytes: bytes, filename: str, user_id: str) -> None:
+def run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str) -> None:
     """Synchronous task wrapper called by the RQ worker.
     
     Bridges RQ's synchronous execution with the async ingestion pipeline using asyncio.run.
     """
     logger.info("Starting background ingestion task for job: %s, file: %s", job_id, filename)
     try:
-        asyncio.run(async_run_ingest_task(job_id, file_bytes, filename, user_id))
+        asyncio.run(async_run_ingest_task(job_id, file_bytes_b64, filename, user_id))
     except Exception as exc:
         logger.exception("Failed to run async_run_ingest_task for job: %s", job_id)
         raise exc
 
-async def async_run_ingest_task(job_id: str, file_bytes: bytes, filename: str, user_id: str) -> None:
+async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str) -> None:
     """Asynchronous worker function that handles client initialization and runs document ingestion."""
     settings = get_settings()
     
@@ -31,6 +31,10 @@ async def async_run_ingest_task(job_id: str, file_bytes: bytes, filename: str, u
     vector_store = MilvusStore(settings)
     ingest_service = IngestService(settings, vector_store, embedding_service)
     job_status_service = JobStatusService()
+    
+    # Decode the base64 payload to binary bytes for parsing
+    import base64
+    file_bytes = base64.b64decode(file_bytes_b64)
     
     db = SessionLocal()
     try:
