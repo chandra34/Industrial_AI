@@ -1,119 +1,225 @@
-# RAG Milvus Assistant
+# RAG Milvus Assistant (Production Grade)
 
-A modular, production-oriented Retrieval-Augmented Generation system built with Python, FastAPI, Streamlit, Milvus Standalone, Sentence Transformers, Transformers, and PyMuPDF.
+A modular, production-ready Retrieval-Augmented Generation (RAG) system built with Python, FastAPI, React 19 (Vite), Milvus (Lite/Standalone), Redis, and SQLite.
 
-## Architecture
+The architecture supports structure-aware document parsing, hybrid search (dense + sparse), serverless cross-encoder reranking, asynchronous ingestion pipelines, and Firebase authentication.
 
-The system is split into small, focused modules so each concern can evolve independently:
+---
 
-- `backend/pdf/parser.py` extracts clean text from PDF pages with PyMuPDF.
-- `backend/rag/chunking.py` splits page text into reusable chunks with overlap.
-- `backend/rag/embeddings.py` calls Google `gemini-embedding-2` via the Gemini API (dim=1536, set `GEMINI_API_KEY` in `.env`).
-- `backend/vectordb/milvus_db.py` creates and queries the Milvus collection.
-- `backend/services/ingest_service.py` orchestrates PDF ingestion end-to-end.
-- `backend/rag/retrieval.py` performs semantic retrieval for user questions.
-- `backend/rag/prompts.py` centralizes prompt templates and context formatting.
-- `backend/rag/llm.py` calls Groq chat completions for answer generation.
-- `backend/rag/pipeline.py` combines retrieval, prompt assembly, and generation.
-- `backend/api/routes.py` exposes the HTTP API.
-- `frontend/streamlit_app.py` provides the chat UI and PDF upload flow.
+## Key Features
 
-## Data Flow
+- **Frontend**: React 19 application powered by Vite, incorporating Firebase Client SDK for user authentication.
+- **Background Ingestion**: Asynchronous document processing using Redis & RQ (Redis Queue) to handle heavy parsing and embedding generation tasks safely.
+- **Advanced Document Parsing**: Supports both standard text extraction (`pymupdf`) and structure-aware parsing (`docling`) which captures logical tables, headers, and metadata.
+- **Flexible Chunking**: Standard recursive character chunking or Docling's hybrid chunking, which prepends section hierarchies (e.g. `[Heading 1 > Subheading]`) to text chunks to maintain context during search.
+- **Pluggable Embeddings**: Standardized interfaces supporting Google Gemini (`gemini-embedding-2`), OpenAI, and Voyage AI.
+- **Milvus Vector Database**:
+  - **Dense Search**: Traditional vector similarity search.
+  - **Sparse Search**: Native BM25-based keyword search using Milvus's sparse vector capabilities.
+  - **Hybrid Search**: Fuses dense and sparse search results within Milvus using Reciprocal Rank Fusion (RRF).
+- **Hugging Face Reranking**: Cross-encoder models (e.g., `BAAI/bge-reranker-v2-m3`) queried via Hugging Face Serverless Inference API.
+- **Multi-LLM Support**: Wrappers for Groq, OpenAI, Anthropic, and Gemini.
+- **Metadata Database**: SQLite database (`metadata.db`) managed via SQLAlchemy for storing document records and background job states.
+- **Authentication**: Route-level Firebase authentication checks.
 
-1. A user uploads a PDF in Streamlit.
-2. The frontend sends the file to `POST /api/v1/upload`.
-3. The backend parses the PDF with PyMuPDF and cleans the text.
-4. The ingestion service chunks the text, embeds each chunk, and stores vectors in Milvus.
-5. When the user asks a question, the backend embeds the query and performs vector search.
-6. Retrieved chunks are assembled into a prompt.
-7. The prompt is sent to Groq for answer generation.
-8. The answer and supporting chunks are returned to the frontend.
+---
 
-## Why this structure scales
+## Directory Architecture
 
-- Ingestion, retrieval, storage, and generation are separated, so each part can be replaced later.
-- Milvus lives behind a dedicated adapter, which makes hybrid search or metadata filters easier to add.
-- Embeddings and generation use external APIs (Gemini + Groq), so no local GPU is required for models.
-- Settings are centralized in environment variables, which makes local development, GPU VM, and cloud deployments consistent.
-- The pipeline is written so streaming, citations, and conversation memory can be added without changing the API shape.
+```
+Production_RAG/
+├── backend/
+│   ├── api/                  # FastAPI router & endpoint definitions
+│   │   ├── auth.py           # Firebase ID token verification middleware
+│   │   ├── dependencies.py   # DB sessions and service accessors
+│   │   ├── documents.py      # Document CRUD and download endpoints
+│   │   ├── health.py         # Readiness & Liveness checks
+│   │   ├── jobs.py           # Upload triggers and background job status polling
+│   │   ├── query.py          # RAG querying & citation responses
+│   │   └── routes.py         # Global Router aggregator
+│   ├── config/
+│   │   └── settings.py       # Pydantic Settings management (loads from .env)
+│   ├── database/
+│   │   ├── models.py         # SQLAlchemy schemas for Document and JobStatus
+│   │   └── session.py        # Database connection engine & session factories
+│   ├── ingestion/            # Pipeline for handling uploads
+│   │   ├── chunkers/         # Docling hybrid and recursive text chunkers
+│   │   ├── parsers/          # PyMuPDF and Docling document converters
+│   │   └── pipeline.py       # Document Parser factory
+│   ├── rag/                  # Retrieval-Augmented Generation core
+│   │   ├── embeddings/       # Embedding providers (Gemini, OpenAI, Voyage)
+│   │   ├── llm/              # LLM service wrappers (Groq, OpenAI, Anthropic, Gemini)
+│   │   ├── chunking.py       # ChunkRecord schema definitions
+│   │   ├── pipeline.py       # Links retrieval, formatting, and generation
+│   │   ├── prompts.py        # Prompts and system template configurations
+│   │   └── retrieval.py      # Dense/Sparse/Hybrid vector search executor
+│   ├── services/             # Core business logic orchestrators
+│   │   ├── document_service.py  # Deleting and fetching metadata documents
+│   │   ├── ingest_service.py    # Main ingestion worker (parse, embed, save to Milvus)
+│   │   ├── job_status_service.py# Status updates for asynchronous task queues
+│   │   └── reranker_service.py  # HF cross-encoder API client
+│   ├── utils/
+│   │   └── logging_context.py   # Unified logging format with Correlation IDs
+│   ├── vectordb/             # Vector database adapters
+│   │   ├── client.py         # Milvus connection pool loaders
+│   │   ├── schema.py         # Automated Milvus collection provisioning
+│   │   ├── reads.py          # Dense, sparse and hybrid search queries
+│   │   └── writes.py         # Vector insertion and deletion queries
+│   ├── main.py               # FastAPI server entry point, CORS, correlation logging middleware
+│   ├── tasks.py              # RQ worker entrypoint executing background ingestion tasks
+│   └── worker.py             # RQ Worker listener (supports Windows SimpleWorker)
+├── frontend-react/           # Vite + React 19 Frontend App
+└── requirements.txt          # Python dependencies
+```
+
+---
+
+## Data Flows
+
+### Ingestion Flow (Asynchronous)
+```mermaid
+sequenceDiagram
+    participant UI as React Frontend
+    participant API as FastAPI Backend
+    participant DB as SQLite (metadata.db)
+    participant Redis as Redis Queue (RQ)
+    participant Worker as Background Worker
+    participant Milvus as Milvus DB
+    
+    UI->>API: POST /api/v1/upload (with PDF & Auth Header)
+    API->>DB: Create Job (status = pending)
+    API->>Redis: Enqueue run_ingest_task (file base64, job_id)
+    API-->>UI: 202 Accepted (job_id)
+    
+    Worker->>Redis: Dequeue Job
+    Worker->>DB: Update Job status to 'processing'
+    Worker->>Worker: Parse PDF (Docling or PyMuPDF)
+    Worker->>Worker: Chunk text & Embed chunks
+    Worker->>Milvus: Save Vectors & Chunks (dense & sparse)
+    Worker->>DB: Save Document metadata & set Job 'completed'
+    
+    UI->>API: GET /api/v1/jobs/{job_id} (polling)
+    API->>DB: Read status
+    API-->>UI: Status (completed / failed)
+```
+
+### Retrieval & Generation Flow (Synchronous Query)
+```mermaid
+sequenceDiagram
+    participant UI as React Frontend
+    participant API as FastAPI Backend
+    participant Milvus as Milvus DB
+    participant HF as Hugging Face API
+    participant LLM as LLM Provider
+    
+    UI->>API: POST /api/v1/query (question, top_k)
+    API->>API: Embed query text
+    API->>Milvus: Hybrid Search (Dense Similarity + Sparse BM25)
+    Milvus-->>API: Top K candidate chunks
+    API->>HF: Rerank Candidates (Cross-Encoder)
+    HF-->>API: Reordered chunks with relevance scores
+    API->>API: Assemble final prompt context
+    API->>LLM: Generate Answer (Groq, OpenAI, Anthropic, Gemini)
+    LLM-->>API: Completed response
+    API-->>UI: Answer + Source Chunks (citations)
+```
+
+---
 
 ## Local Setup
 
-1. Install dependencies:
+### Prerequisites
+- Python 3.10+
+- Redis (running locally or remotely)
+- Node.js (for React frontend)
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Configuration (`.env`)
+Create a `.env` file in the project root:
 
-   Set your Google API key in `.env`:
+```env
+APP_NAME="RAG Milvus App"
+LOG_LEVEL="INFO"
+DATABASE_URL="sqlite:///./metadata.db"
+REDIS_URL="redis://localhost:6379/0"
 
-   ```env
-   GEMINI_API_KEY=your-api-key-here
-   GROQ_API_KEY=your-groq-api-key-here
-   EMBEDDING_MODEL_NAME=gemini-embedding-2
-   LLM_MODEL=llama-3.1-8b-instant
-   MILVUS_DIMENSION=1536
-   ```
+# Milvus Configuration
+# For Milvus Lite, use a local filepath ending in .db.
+# For Standalone, use the HTTP endpoint (e.g. http://localhost:19530).
+MILVUS_URI="./milvus_local.db"
+MILVUS_COLLECTION_NAME="rag_documents"
+MILVUS_DIMENSION=1536
 
-   If you previously indexed documents with a different embedding dimension (e.g. 1024), delete `milvus_local.db` or change `MILVUS_COLLECTION_NAME` before re-uploading PDFs.
+# Ingestion Settings
+DOCUMENT_PARSER="pymupdf"  # Options: "pymupdf", "docling"
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=150
 
-2. Start the app locally:
+# Providers
+EMBEDDING_PROVIDER="gemini" # Options: "gemini", "openai", "voyage"
+EMBEDDING_MODEL_NAME="gemini-embedding-2"
+GEMINI_API_KEY="your-gemini-api-key"
+OPENAI_API_KEY="your-openai-api-key"
+VOYAGE_API_KEY="your-voyage-api-key"
 
-- Milvus Lite is enabled by default via `MILVUS_URI=./milvus_local.db`, so no separate Milvus server is needed.
-- If you want to use a remote Milvus instead, override `MILVUS_URI` with that endpoint.
-- Start the backend API with Uvicorn:
+LLM_PROVIDER="groq"        # Options: "groq", "openai", "anthropic", "gemini"
+LLM_MODEL="llama-3.1-8b-instant"
+GROQ_API_KEY="your-groq-api-key"
+ANTHROPIC_API_KEY="your-anthropic-api-key"
 
-   ```bash
-   uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
+# Reranker Settings
+RERANKER_ENABLED=true
+RERANKER_MODEL_NAME="BAAI/bge-reranker-v2-m3"
+HF_TOKEN="your-huggingface-token"
+RERANKER_CANDIDATE_K=25
 
-- Start the Streamlit frontend (from the project root):
+# Firebase Auth (Optional if running without client verification)
+FIREBASE_CREDENTIALS_PATH="backend/firebase-key.json"
+```
 
-   ```bash
-   cd /path/to/Rag_pymilvus
-   streamlit run frontend/streamlit_app.py --server.port 8501
-   ```
+### 2. Backend & Worker Setup
+Install dependencies in a virtual environment:
+```bash
+python -m venv venvrag
+# Activate the venv (Windows: venvrag\Scripts\activate, Linux/macOS: source venvrag/bin/activate)
+pip install -r requirements.txt
+```
 
-3. Open the apps:
+Start the FastAPI API Server:
+```bash
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-- Streamlit UI: http://localhost:8501
-- FastAPI docs: http://localhost:8000/docs
-- Milvus Lite data file: `milvus_local.db`
+Start the Background RQ Worker (in a separate terminal):
+```bash
+python -m backend.worker
+```
+*(On Windows, this automatically boots in `SimpleWorker` mode to avoid Python `fork` limitations).*
 
-## Groq LLM
+### 3. Frontend Setup
+Navigate to the frontend directory, install packages, and start the development server:
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
 
-The backend uses the Groq API for chat completion. Set `GROQ_API_KEY` and `LLM_MODEL` in `.env` (default: `llama-3.1-8b-instant`).
+---
 
-## Milvus Lite
+## API Documentation
 
-The backend uses `pymilvus` with a local file URI. If `MILVUS_URI` ends with `.db`, `MilvusClient` uses Milvus Lite and stores vectors in that file. Milvus Lite only supports the `FLAT` index type, and the backend switches to `FLAT` automatically for local `.db` URIs.
+Interactive API documentation is generated automatically by FastAPI:
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
-## API Endpoints
+### Primary Endpoints
 
-- `GET /api/v1/health`
-- `POST /api/v1/upload`
-- `POST /api/v1/query`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/health` | Diagnostic liveness checks for Milvus, SQLite, and services. |
+| `POST` | `/api/v1/upload` | Upload a PDF. Enqueues background ingestion and returns a `job_id`. |
+| `GET` | `/api/v1/jobs/{job_id}` | Check the progress/status of an ingestion job. |
+| `POST` | `/api/v1/query` | Submit a prompt to query documents. Returns synthesized answers and citations. |
+| `GET` | `/api/v1/documents` | Retrieve a list of all indexed documents for the user. |
+| `DELETE` | `/api/v1/documents/{document_id}` | Purge document files from disk and remove vectors from Milvus. |
+| `GET` | `/api/v1/documents/{document_id}/download` | Download the original PDF document file. |
 
-## Future Extensions
-
-The codebase is intentionally structured to make these additions straightforward:
-
-- hybrid search
-- citations
-- metadata filtering
-- conversation memory
-- OCR
-- authentication
-- multi-user support
-- streaming responses
-- Kubernetes deployment
-- Redis caching
-- async ingestion pipelines
-
-## Notes for Production
-
-- Replace the permissive CORS setup with explicit origins.
-- Add auth before exposing the API publicly.
-- Consider background jobs for large ingestion workloads.
-- Add observability with structured logs, metrics, and traces.
-- Pin model and image versions in production for reproducibility.
