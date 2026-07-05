@@ -19,9 +19,17 @@ class RecursiveChunker:
         pages: list[PDFPage],
         document_id: str,
         source_filename: str,
+        metadata: dict | None = None,
     ) -> list[ChunkRecord]:
         chunks: list[ChunkRecord] = []
         running_index = 0
+
+        meta = metadata or {}
+        doc_type = meta.get("document_type")
+        mfr = meta.get("manufacturer")
+        equip = meta.get("equipment")
+        rev = meta.get("revision")
+        lang = meta.get("language")
 
         for page in pages:
             if not page.text.strip():
@@ -40,6 +48,13 @@ class RecursiveChunker:
                         page_number=page.page_number,
                         chunk_index=running_index,
                         text=normalized,
+                        document_type=doc_type,
+                        manufacturer=mfr,
+                        equipment=equip,
+                        section="",
+                        revision=rev,
+                        language=lang,
+                        paragraph="",
                     )
                 )
                 running_index += 1

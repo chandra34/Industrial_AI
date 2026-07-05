@@ -89,7 +89,10 @@ def reconcile_collection_schema(
                 if user_id_field:
                     is_part_key = user_id_field.get("is_partition_key", False) if isinstance(user_id_field, dict) else getattr(user_id_field, "is_partition_key", False)
 
-                needs_recreate = (not has_user_id or not is_part_key)
+                metadata_fields = ["document_type", "manufacturer", "equipment", "section", "revision", "language", "paragraph"]
+                has_metadata = all(f in field_names for f in metadata_fields)
+
+                needs_recreate = (not has_user_id or not is_part_key or not has_metadata)
                 # Also recreate if BM25 is enabled but the sparse_vector field is missing
                 if settings.bm25_enabled and not has_sparse:
                     needs_recreate = True
@@ -160,6 +163,13 @@ def reconcile_collection_schema(
             "chunk_text", DataType.VARCHAR, max_length=65535,
             enable_analyzer=True,  # Required for Milvus native BM25 tokenization
         )
+        schema.add_field("document_type", DataType.VARCHAR, max_length=64)
+        schema.add_field("manufacturer", DataType.VARCHAR, max_length=64)
+        schema.add_field("equipment", DataType.VARCHAR, max_length=64)
+        schema.add_field("section", DataType.VARCHAR, max_length=512)
+        schema.add_field("revision", DataType.VARCHAR, max_length=64)
+        schema.add_field("language", DataType.VARCHAR, max_length=64)
+        schema.add_field("paragraph", DataType.VARCHAR, max_length=64)
         schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=settings.milvus_dimension)
 
         # Add sparse vector field and BM25 function if enabled

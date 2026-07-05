@@ -10,6 +10,7 @@ class BaseParser(ABC):
         pdf_bytes: bytes,
         document_id: str,
         source_filename: str,
+        metadata: dict | None = None,
     ) -> list[ChunkRecord]:
         """Parse pdf bytes and return a unified list of ChunkRecord objects."""
         pass

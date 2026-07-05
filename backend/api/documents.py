@@ -32,6 +32,11 @@ async def list_documents(
                 filename=doc["filename"],
                 page_count=doc["page_count"],
                 chunk_count=doc["chunk_count"],
+                document_type=doc.get("document_type"),
+                manufacturer=doc.get("manufacturer"),
+                equipment=doc.get("equipment"),
+                revision=doc.get("revision"),
+                language=doc.get("language"),
             )
             for doc in docs
         ]

@@ -34,9 +34,10 @@ class DoclingParser(BaseParser):
         pdf_bytes: bytes,
         document_id: str,
         source_filename: str,
+        metadata: dict | None = None,
     ) -> list[ChunkRecord]:
         byte_stream = BytesIO(pdf_bytes)
         source = DocumentStream(name=source_filename, stream=byte_stream)
         
         result = self.converter.convert(source)
-        return self.chunker.chunk(result.document, document_id, source_filename)
+        return self.chunker.chunk(result.document, document_id, source_filename, metadata=metadata)

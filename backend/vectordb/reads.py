@@ -20,9 +20,29 @@ class VectorSearchHit:
     chunk_index: int
     chunk_text: str
     score: float
+    document_type: str = ""
+    manufacturer: str = ""
+    equipment: str = ""
+    section: str = ""
+    revision: str = ""
+    language: str = ""
+    paragraph: str = ""
 
 
-_OUTPUT_FIELDS = ["document_id", "source_filename", "page_number", "chunk_index", "chunk_text"]
+_OUTPUT_FIELDS = [
+    "document_id",
+    "source_filename",
+    "page_number",
+    "chunk_index",
+    "chunk_text",
+    "document_type",
+    "manufacturer",
+    "equipment",
+    "section",
+    "revision",
+    "language",
+    "paragraph",
+]
 
 
 def parse_search_hit(hit: Any) -> VectorSearchHit:
@@ -35,12 +55,19 @@ def parse_search_hit(hit: Any) -> VectorSearchHit:
         or (hit.get("score") if isinstance(hit, dict) else None)
     )
     return VectorSearchHit(
-        document_id=str(entity.get("document_id")),
-        source_filename=str(entity.get("source_filename")),
+        document_id=str(entity.get("document_id") or ""),
+        source_filename=str(entity.get("source_filename") or ""),
         page_number=int(entity.get("page_number") or 0),
         chunk_index=int(entity.get("chunk_index") or 0),
         chunk_text=str(entity.get("chunk_text") or ""),
         score=float(score) if score is not None else 0.0,
+        document_type=str(entity.get("document_type") or ""),
+        manufacturer=str(entity.get("manufacturer") or ""),
+        equipment=str(entity.get("equipment") or ""),
+        section=str(entity.get("section") or ""),
+        revision=str(entity.get("revision") or ""),
+        language=str(entity.get("language") or ""),
+        paragraph=str(entity.get("paragraph") or ""),
     )
 
 

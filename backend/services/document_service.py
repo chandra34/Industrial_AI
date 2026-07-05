@@ -42,6 +42,11 @@ class DocumentService:
                 "filename": doc.filename,
                 "page_count": doc.page_count,
                 "chunk_count": doc.chunk_count,
+                "document_type": doc.document_type,
+                "manufacturer": doc.manufacturer,
+                "equipment": doc.equipment,
+                "revision": doc.revision,
+                "language": doc.language,
             }
             for doc in docs
         ]

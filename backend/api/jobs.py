@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from redis import Redis
 from rq import Queue
 from rq.serializers import JSONSerializer
@@ -29,6 +29,11 @@ UPLOAD_BUFFER_SIZE = 1024 * 1024  # 1MB chunk size for reading file uploads
 @router.post("/upload", response_model=UploadJobAcceptedResponse, status_code=202)
 async def upload_pdf(
     file: UploadFile = File(...),
+    document_type: str | None = Form(None),
+    manufacturer: str | None = Form(None),
+    equipment: str | None = Form(None),
+    revision: str | None = Form(None),
+    language: str | None = Form(None),
     current_user: FirebaseUser = Depends(get_current_user),
     job_status_service: JobStatusService = Depends(get_job_status_service),
     db: Session = Depends(get_db),
@@ -63,12 +68,21 @@ async def upload_pdf(
 
     file_bytes_b64 = base64.b64encode(file_bytes).decode("utf-8")
 
+    metadata = {
+        "document_type": document_type,
+        "manufacturer": manufacturer,
+        "equipment": equipment,
+        "revision": revision,
+        "language": language,
+    }
+
     task_queue.enqueue(
         run_ingest_task,
         job_id,
         file_bytes_b64,
         file.filename,
         current_user.uid,
+        metadata=metadata,
         job_id=job_id,
     )
 

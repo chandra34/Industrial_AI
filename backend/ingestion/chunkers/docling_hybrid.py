@@ -21,9 +21,17 @@ class DoclingHybridChunker:
         doc: DoclingDocument,
         document_id: str,
         source_filename: str,
+        metadata: dict | None = None,
     ) -> list[ChunkRecord]:
         chunks: list[ChunkRecord] = []
         running_index = 0
+
+        meta = metadata or {}
+        doc_type = meta.get("document_type")
+        mfr = meta.get("manufacturer")
+        equip = meta.get("equipment")
+        rev = meta.get("revision")
+        lang = meta.get("language")
 
         docling_chunks = self.chunker.chunk(doc)
         for dl_chunk in docling_chunks:
@@ -57,6 +65,13 @@ class DoclingHybridChunker:
                     page_number=page_number,
                     chunk_index=running_index,
                     text=formatted_text,
+                    document_type=doc_type,
+                    manufacturer=mfr,
+                    equipment=equip,
+                    section=section_name,
+                    revision=rev,
+                    language=lang,
+                    paragraph="",
                 )
             )
             running_index += 1

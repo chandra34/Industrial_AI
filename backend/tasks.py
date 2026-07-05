@@ -10,19 +10,19 @@ from backend.schemas.schemas import UploadResponse
 
 logger = logging.getLogger(__name__)
 
-def run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str) -> None:
+def run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str, metadata: dict | None = None) -> None:
     """Synchronous task wrapper called by the RQ worker.
     
     Bridges RQ's synchronous execution with the async ingestion pipeline using asyncio.run.
     """
     logger.info("Starting background ingestion task for job: %s, file: %s", job_id, filename)
     try:
-        asyncio.run(async_run_ingest_task(job_id, file_bytes_b64, filename, user_id))
+        asyncio.run(async_run_ingest_task(job_id, file_bytes_b64, filename, user_id, metadata))
     except Exception as exc:
         logger.exception("Failed to run async_run_ingest_task for job: %s", job_id)
         raise exc
 
-async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str) -> None:
+async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str, metadata: dict | None = None) -> None:
     """Asynchronous worker function that handles client initialization and runs document ingestion."""
     settings = get_settings()
     
@@ -41,7 +41,7 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
         job_status_service.update_status(db, job_id, "processing")
         
         # Execute the main ingestion steps (parse, chunk, embed, store, metadata db write)
-        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id, db=db)
+        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id, db=db, metadata=metadata)
         
         upload_response = UploadResponse(
             document_id=result.document_id,
@@ -50,6 +50,11 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
             page_count=result.page_count,
             chunk_count=result.chunk_count,
             embedded_count=result.embedded_count,
+            document_type=result.document_type,
+            manufacturer=result.manufacturer,
+            equipment=result.equipment,
+            revision=result.revision,
+            language=result.language,
         )
         job_status_service.update_status(db, job_id, "completed", result=upload_response)
         logger.info("Background ingestion task completed successfully for job: %s", job_id)

@@ -35,3 +35,7 @@ backend/uploads/
 .cursor/
 backend/logs/
 *.log
+
+# Exclude environment files (loaded via env_file at runtime)
+.env
+.env*

@@ -53,6 +53,13 @@ async def execute_insert_chunks(
                 "chunk_index": int(chunk.chunk_index),
                 "chunk_text": chunk.text,
                 "embedding": emb.tolist(),
+                "document_type": chunk.document_type or "",
+                "manufacturer": chunk.manufacturer or "",
+                "equipment": chunk.equipment or "",
+                "section": chunk.section or "",
+                "revision": chunk.revision or "",
+                "language": chunk.language or "",
+                "paragraph": chunk.paragraph or "",
             }
         )
 

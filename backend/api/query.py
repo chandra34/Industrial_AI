@@ -42,6 +42,13 @@ async def query_documents(
                 chunk_index=chunk.chunk_index,
                 score=chunk.score,
                 chunk_text=chunk.chunk_text,
+                document_type=chunk.document_type,
+                manufacturer=chunk.manufacturer,
+                equipment=chunk.equipment,
+                section=chunk.section,
+                revision=chunk.revision,
+                language=chunk.language,
+                paragraph=chunk.paragraph,
             )
             for chunk in result.sources
         ],
