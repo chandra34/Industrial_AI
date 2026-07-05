@@ -56,7 +56,13 @@ class MilvusStore:
             user_id=user_id,
         )
 
-    async def search(self, query_embedding: np.ndarray, top_k: int, user_id: str) -> list[VectorSearchHit]:
+    async def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int,
+        user_id: str,
+        metadata_filter: str | None = None,
+    ) -> list[VectorSearchHit]:
         """Perform a dense-only vector similarity search scoped to ``user_id``."""
         return await execute_dense_search(
             async_client=self._async_client,
@@ -65,6 +71,7 @@ class MilvusStore:
             query_embedding=query_embedding,
             top_k=top_k,
             user_id=user_id,
+            metadata_filter=metadata_filter,
         )
 
     async def hybrid_search(
@@ -73,6 +80,7 @@ class MilvusStore:
         query_text: str,
         top_k: int,
         user_id: str,
+        metadata_filter: str | None = None,
     ) -> list[VectorSearchHit]:
         """Perform a hybrid dense + sparse (BM25) search with RRF fusion inside Milvus."""
         return await execute_hybrid_search(
@@ -83,6 +91,7 @@ class MilvusStore:
             query_text=query_text,
             top_k=top_k,
             user_id=user_id,
+            metadata_filter=metadata_filter,
         )
 
     async def delete_document(self, document_id: str, user_id: str) -> None:

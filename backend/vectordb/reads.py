@@ -89,16 +89,22 @@ async def execute_dense_search(
     query_embedding: np.ndarray,
     top_k: int,
     user_id: str,
+    metadata_filter: str | None = None,
 ) -> list[VectorSearchHit]:
     """Perform a dense-only vector similarity search scoped to ``user_id``."""
     if query_embedding.ndim == 1:
         query_embedding = np.expand_dims(query_embedding, axis=0)
 
+    safe_user_id = sanitize_filter_value(user_id, "user_id")
+    filter_expr = f'user_id == "{safe_user_id}"'
+    if metadata_filter:
+        filter_expr += f" and ({metadata_filter})"
+
     results = await async_client.search(
         collection_name=collection_name,
         data=query_embedding.tolist(),
         limit=top_k,
-        filter=f'user_id == "{sanitize_filter_value(user_id, "user_id")}"',
+        filter=filter_expr,
         search_params=dense_search_params(settings),
         output_fields=_OUTPUT_FIELDS,
     )
@@ -119,6 +125,7 @@ async def execute_hybrid_search(
     query_text: str,
     top_k: int,
     user_id: str,
+    metadata_filter: str | None = None,
 ) -> list[VectorSearchHit]:
     """Perform a hybrid dense + sparse (BM25) search with RRF fusion inside Milvus.
 
@@ -132,6 +139,8 @@ async def execute_hybrid_search(
 
     safe_user_id = sanitize_filter_value(user_id, "user_id")
     filter_expr = f'user_id == "{safe_user_id}"'
+    if metadata_filter:
+        filter_expr += f" and ({metadata_filter})"
 
     # Dense ANN search request
     dense_req = AnnSearchRequest(
