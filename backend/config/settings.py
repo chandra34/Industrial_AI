@@ -25,10 +25,12 @@ class Settings(BaseSettings):
     project_root: Path = Path(__file__).resolve().parents[2]
     upload_dir: Path = Path("backend/uploads")
     max_upload_mb: int = Field(default=15, alias="MAX_UPLOAD_MB")
+    database_url: str = Field(default="sqlite:///./metadata.db", alias="DATABASE_URL")
 
     milvus_host: str = Field(default="localhost", alias="MILVUS_HOST")
     milvus_port: int = Field(default=19530, alias="MILVUS_PORT")
     milvus_uri: str | None = Field(default="./milvus_local.db", alias="MILVUS_URI")
+    milvus_token: str | None = Field(default=None, alias="MILVUS_TOKEN")
     milvus_collection_name: str = Field(default="rag_documents", alias="MILVUS_COLLECTION_NAME")
     milvus_alias: str = Field(default="default", alias="MILVUS_ALIAS")
     milvus_dimension: int = Field(default=1536, alias="MILVUS_DIMENSION")
@@ -47,6 +49,7 @@ class Settings(BaseSettings):
     embedding_provider: str = Field(default="gemini", alias="EMBEDDING_PROVIDER")
     embedding_model_name: str = Field(default="gemini-embedding-2", alias="EMBEDDING_MODEL_NAME")
     embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
+    embedding_concurrency: int = Field(default=5, alias="EMBEDDING_CONCURRENCY")
     document_parser: str = Field(default="pymupdf", alias="DOCUMENT_PARSER")
     chunk_size: int = Field(default=1000, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=150, alias="CHUNK_OVERLAP")
@@ -71,6 +74,9 @@ class Settings(BaseSettings):
     reranker_model_name: str = Field(default="BAAI/bge-reranker-v2-m3", alias="RERANKER_MODEL_NAME")
     hf_token: str = Field(default="", alias="HF_TOKEN")
     reranker_candidate_k: int = Field(default=25, alias="RERANKER_CANDIDATE_K")
+
+    # Redis Configuration
+    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
 
     @property
     def resolved_milvus_uri(self) -> str:

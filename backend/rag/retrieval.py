@@ -19,6 +19,13 @@ class RetrievedChunk:
     chunk_index: int
     chunk_text: str
     score: float
+    document_type: str = ""
+    manufacturer: str = ""
+    equipment: str = ""
+    section: str = ""
+    revision: str = ""
+    language: str = ""
+    paragraph: str = ""
 
 
 class RetrievalService:
@@ -111,4 +118,11 @@ def _hit_to_chunk(hit: VectorSearchHit) -> RetrievedChunk:
         chunk_index=hit.chunk_index,
         chunk_text=hit.chunk_text,
         score=hit.score,
+        document_type=hit.document_type,
+        manufacturer=hit.manufacturer,
+        equipment=hit.equipment,
+        section=hit.section,
+        revision=hit.revision,
+        language=hit.language,
+        paragraph=hit.paragraph,
     )

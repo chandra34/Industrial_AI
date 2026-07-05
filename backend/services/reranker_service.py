@@ -46,13 +46,37 @@ class RerankerService:
             results = response.json()
             
             # Parse scores. The HF Serverless Classification API returns a list of results:
-            # e.g., [[{"label": "LABEL_0", "score": 0.89}], [{"label": "LABEL_0", "score": 0.12}]]
+            # e.g., [[{"label": "LABEL_0", "score": 0.89}, {"label": "LABEL_1", "score": 0.11}]]
             for chunk, result in zip(chunks, results):
-                if isinstance(result, list) and len(result) > 0:
-                    # Sort results for safety to fetch the highest score or first item
-                    chunk.score = float(result[0].get("score", 0.0))
+                score = 0.0
+                if isinstance(result, list):
+                    # Map labels to their scores
+                    label_map = {
+                        item.get("label"): float(item.get("score", 0.0))
+                        for item in result
+                        if isinstance(item, dict)
+                    }
+                    
+                    if "LABEL_1" in label_map:
+                        # Standard positive relevance label for binary cross-encoders
+                        score = label_map["LABEL_1"]
+                    elif "LABEL_0" in label_map:
+                        # If only LABEL_0 is present, use it directly (single-output cross-encoder)
+                        # Otherwise, calculate complement (binary classifier)
+                        if len(label_map) == 1:
+                            score = label_map["LABEL_0"]
+                        else:
+                            score = 1.0 - label_map["LABEL_0"]
+                    elif len(result) == 1:
+                        # Single output score (regression models)
+                        score = float(result[0].get("score", 0.0))
+                    elif result:
+                        # Fallback to the first item's score
+                        score = float(result[0].get("score", 0.0))
                 elif isinstance(result, dict):
-                    chunk.score = float(result.get("score", 0.0))
+                    score = float(result.get("score", 0.0))
+                
+                chunk.score = score
             
             # Sort descending by rerank score
             chunks.sort(key=lambda x: -x.score)

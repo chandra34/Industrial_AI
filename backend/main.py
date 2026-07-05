@@ -114,6 +114,33 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 
 
+def retry_initialization(func, description: str, retries: int = 5, delay: float = 2.0):
+    """Retry a startup connection or initialization function with exponential backoff."""
+    current_delay = delay
+    for attempt in range(1, retries + 1):
+        try:
+            return func()
+        except Exception as exc:
+            if attempt == retries:
+                logger.error(
+                    "Startup critical initialization failed for %s after %d attempts: %s. Halting.",
+                    description,
+                    attempt,
+                    exc,
+                )
+                raise
+            logger.warning(
+                "Failed to initialize %s (attempt %d/%d). Error: %s. Retrying in %.1f seconds...",
+                description,
+                attempt,
+                retries,
+                exc,
+                current_delay,
+            )
+            time.sleep(current_delay)
+            current_delay *= 2
+
+
 @app.on_event("startup")
 async def on_startup() -> None:
     """Initialize Firebase, services, and attach them to application state."""
@@ -121,6 +148,16 @@ async def on_startup() -> None:
         os.environ["HF_TOKEN"] = settings.hf_token
     settings.resolved_upload_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting %s", settings.app_name)
+
+    # Initialize metadata database tables
+    from backend.database.session import engine
+    from backend.database.models import Base
+    
+    def init_db():
+        Base.metadata.create_all(bind=engine)
+        
+    retry_initialization(init_db, "Metadata database tables")
+    logger.info("Metadata database tables initialized")
 
     # Initialize Firebase Admin SDK
     if not firebase_admin._apps:
@@ -146,7 +183,11 @@ async def on_startup() -> None:
 
 
     embedding_service = EmbeddingFactory.create(settings)
-    vector_store = MilvusStore(settings)
+    
+    def init_milvus():
+        return MilvusStore(settings)
+        
+    vector_store = retry_initialization(init_milvus, "Milvus Store")
     llm_service = LLMFactory.create(settings)
 
     # BM25 sparse search is handled natively by Milvus (schema + SPARSE_INVERTED_INDEX)

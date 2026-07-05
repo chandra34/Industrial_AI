@@ -18,6 +18,11 @@ class UploadResponse(BaseModel):
     page_count: int
     chunk_count: int
     embedded_count: int
+    document_type: str | None = None
+    manufacturer: str | None = None
+    equipment: str | None = None
+    revision: str | None = None
+    language: str | None = None
 
 
 class QueryRequest(BaseModel):
@@ -32,6 +37,13 @@ class SourceChunkResponse(BaseModel):
     chunk_index: int
     score: float
     chunk_text: str
+    document_type: str | None = None
+    manufacturer: str | None = None
+    equipment: str | None = None
+    section: str | None = None
+    revision: str | None = None
+    language: str | None = None
+    paragraph: str | None = None
 
 
 class QueryResponse(BaseModel):
@@ -47,6 +59,11 @@ class DocumentItem(BaseModel):
     filename: str
     page_count: int
     chunk_count: int
+    document_type: str | None = None
+    manufacturer: str | None = None
+    equipment: str | None = None
+    revision: str | None = None
+    language: str | None = None
 
 
 class DocumentListResponse(BaseModel):

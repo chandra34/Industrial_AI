@@ -28,8 +28,9 @@ async def get_current_user(
 
     token = credentials.credentials
     try:
-        # Verify the ID token using the Firebase Admin SDK
-        decoded_token = auth.verify_id_token(token)
+        # Verify the ID token using the Firebase Admin SDK in a background thread to prevent blocking the event loop
+        from fastapi.concurrency import run_in_threadpool
+        decoded_token = await run_in_threadpool(auth.verify_id_token, token)
         uid = decoded_token.get("uid")
         
         # Sanitize and validate uid format to prevent filter injection

@@ -16,6 +16,13 @@ class ChunkRecord:
     page_number: int
     chunk_index: int
     text: str
+    document_type: str | None = None
+    manufacturer: str | None = None
+    equipment: str | None = None
+    section: str | None = None
+    revision: str | None = None
+    language: str | None = None
+    paragraph: str | None = None
 
 
 def chunk_pages(

@@ -24,10 +24,10 @@ class VoyageEmbedding(EmbeddingProvider):
         )
 
     async def _embed_batch(self, texts: list[str]) -> np.ndarray:
-        # Fallback method if called directly; defaults to None input_type.
         result = await self.client.embed(
             texts=texts,
             model=self.settings.embedding_model_name,
+            input_type="document",
             output_dimension=self.settings.milvus_dimension
         )
         return np.array(result.embeddings, dtype=np.float32)
@@ -41,24 +41,3 @@ class VoyageEmbedding(EmbeddingProvider):
             output_dimension=self.settings.milvus_dimension
         )
         return np.array(result.embeddings, dtype=np.float32)
-
-    async def embed_texts(self, texts: Iterable[str]) -> np.ndarray:
-        """Override to specifically use input_type='document' and handle batching."""
-        text_list = list(texts)
-        if not text_list:
-            return np.empty((0, self.settings.milvus_dimension), dtype=np.float32)
-
-        batch_size = self.settings.embedding_batch_size
-        batches: list[np.ndarray] = []
-        for start in range(0, len(text_list), batch_size):
-            batch = text_list[start : start + batch_size]
-            
-            result = await self.client.embed(
-                texts=batch,
-                model=self.settings.embedding_model_name,
-                input_type="document",
-                output_dimension=self.settings.milvus_dimension
-            )
-            batches.append(np.array(result.embeddings, dtype=np.float32))
-            
-        return np.vstack(batches)

@@ -3,7 +3,10 @@ from pathlib import Path
 import logging
 from uuid import uuid4
 
+from sqlalchemy.orm import Session
+
 from backend.config.settings import Settings
+from backend.database.models import Document
 from backend.rag.embeddings import EmbeddingProvider
 from backend.ingestion.pipeline import get_parser
 from backend.vectordb.milvus_db import MilvusStore
@@ -20,6 +23,11 @@ class IngestionResult:
     page_count: int
     chunk_count: int
     embedded_count: int
+    document_type: str | None = None
+    manufacturer: str | None = None
+    equipment: str | None = None
+    revision: str | None = None
+    language: str | None = None
 
 
 class IngestService:
@@ -48,22 +56,79 @@ class IngestService:
         stored_path.write_bytes(file_bytes)
         return stored_path, document_id
 
-    async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str) -> IngestionResult:
-        """Ingest a PDF for ``user_id`` and return indexing metadata."""
+    async def _extract_metadata_via_llm(self, doc_text_sample: str) -> dict:
+        """Use Groq's openai/gpt-oss-120b model to extract document metadata using strict JSON schema."""
+        import json
+        from groq import Groq
+        from pydantic import BaseModel, Field
+
+        class DocumentMetadata(BaseModel):
+            model_config = {"extra": "forbid"}
+
+            document_type: str = Field(description="One of: 'OEM Manual', 'SOP', 'LOTO Procedure', 'Work Instruction', 'Safety Rules', or 'Unknown'")
+            manufacturer: str = Field(description="Equipment manufacturer name, or 'Unknown'")
+            equipment: str = Field(description="Specific equipment model or name, or 'Unknown'")
+            revision: str = Field(description="Document revision/version number, or 'Unknown'")
+            language: str = Field(description="Document language, or 'Unknown'")
+
+        if not self.settings.groq_api_key:
+            logger.warning("GROQ_API_KEY not configured; skipping LLM metadata extraction")
+            return {}
+            
+        try:
+            client = Groq(api_key=self.settings.groq_api_key)
+            
+            prompt = (
+                "You are an industrial safety document analyzer. Extract document metadata from the following text sample "
+                "taken from the beginning of a document. You must return a valid JSON object strictly matching the schema.\n\n"
+                f"Text Sample:\n{doc_text_sample[:4000]}"
+            )
+            
+            def call_groq():
+                return client.chat.completions.create(
+                    model="openai/gpt-oss-120b",
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.0,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "DocumentMetadata",
+                            "strict": True,
+                            "schema": DocumentMetadata.model_json_schema()
+                        }
+                    }
+                )
+                
+            completion = await run_in_threadpool(call_groq)
+            content = completion.choices[0].message.content.strip()
+            
+            logger.info("Raw LLM metadata extraction response: %s", content)
+            return json.loads(content)
+        except Exception as e:
+            logger.exception("Failed to extract metadata via Groq structured outputs: %s", e)
+            return {}
+
+    async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str, db: Session | None = None, metadata: dict | None = None) -> IngestionResult:
+        """Parse PDFs, chunk text, embed vectors, and persist them to Milvus."""
         import time
         from backend.utils.logging_context import document_id_var
         
         logger.info("Upload flow: request received | filename: %s | size: %d bytes", original_name, len(file_bytes))
         
-        if not file_bytes:
-            raise ValueError("Uploaded file is empty")
-
-        stored_path, document_id = self._save_upload(file_bytes, original_name)
-        document_id_var.set(document_id)
-        
-        logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
+        stored_path = None
+        document_id = None
 
         try:
+            if not file_bytes:
+                raise ValueError("Uploaded file is empty")
+
+            stored_path, document_id = self._save_upload(file_bytes, original_name)
+            document_id_var.set(document_id)
+            
+            logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
+
             # Document parsing and chunking
             start_parse_chunk = time.perf_counter()
             try:
@@ -88,6 +153,40 @@ class IngestService:
             if not chunks:
                 raise ValueError("PDF parsed successfully but no chunks were generated")
 
+            # Metadata extraction and resolution
+            final_meta = {
+                "document_type": "Unknown",
+                "manufacturer": "Unknown",
+                "equipment": "Unknown",
+                "revision": "Unknown",
+                "language": "English",
+            }
+            if metadata:
+                # Merge user overrides
+                for k, v in metadata.items():
+                    if v:
+                        final_meta[k] = v
+
+            # Check if any fields need LLM extraction (i.e. they are still "Unknown")
+            needs_extraction = any(final_meta[k] == "Unknown" for k in ["document_type", "manufacturer", "equipment", "revision"])
+            if needs_extraction:
+                # Take sample text from first few chunks
+                sample_chunks = [c.text for c in chunks[:5]]
+                sample_text = "\n".join(sample_chunks)
+                logger.info("Triggering Groq fallback metadata extraction on text sample")
+                llm_meta = await self._extract_metadata_via_llm(sample_text)
+                for k in ["document_type", "manufacturer", "equipment", "revision", "language"]:
+                    if final_meta.get(k) == "Unknown" and llm_meta.get(k):
+                        final_meta[k] = llm_meta[k]
+
+            # In-memory chunk enrichment with resolved metadata
+            for chunk in chunks:
+                chunk.document_type = final_meta.get("document_type")
+                chunk.manufacturer = final_meta.get("manufacturer")
+                chunk.equipment = final_meta.get("equipment")
+                chunk.revision = final_meta.get("revision")
+                chunk.language = final_meta.get("language")
+
             # Embedding generation
             start_embed = time.perf_counter()
             embeddings = await self.embedding_service.embed_texts(chunk.text for chunk in chunks)
@@ -105,18 +204,52 @@ class IngestService:
             
             logger.info("Indexed document %s for user %s with %s chunks", document_id, user_id, stored_count)
 
+            # Persist document metadata to the relational database
+            page_count = max((c.page_number for c in chunks), default=1)
+            if db is not None:
+                doc_record = Document(
+                    id=document_id,
+                    user_id=user_id,
+                    filename=original_name,
+                    stored_path=str(stored_path),
+                    page_count=page_count,
+                    chunk_count=len(chunks),
+                    embedded_count=stored_count,
+                    document_type=final_meta.get("document_type"),
+                    manufacturer=final_meta.get("manufacturer"),
+                    equipment=final_meta.get("equipment"),
+                    revision=final_meta.get("revision"),
+                    language=final_meta.get("language"),
+                )
+                db.add(doc_record)
+                db.commit()
+                logger.info("Upload flow: document metadata persisted to database | document_id: %s", document_id)
+
             logger.info("Upload flow: request completed successfully | document_id: %s", document_id)
             return IngestionResult(
                 document_id=document_id,
                 filename=original_name,
                 stored_path=str(stored_path),
-                page_count=max((c.page_number for c in chunks), default=1),
+                page_count=page_count,
                 chunk_count=len(chunks),
                 embedded_count=stored_count,
+                document_type=final_meta.get("document_type"),
+                manufacturer=final_meta.get("manufacturer"),
+                equipment=final_meta.get("equipment"),
+                revision=final_meta.get("revision"),
+                language=final_meta.get("language"),
             )
         except Exception:
+            # Clean up the orphaned vectors from Milvus since ingestion failed
+            if document_id is not None:
+                try:
+                    await self.vector_store.delete_document(document_id, user_id)
+                    logger.info("Cleaned up orphaned vectors from Milvus due to ingestion failure: %s", document_id)
+                except Exception as e:
+                    logger.warning("Could not delete orphaned vectors for document %s from Milvus: %s", document_id, e)
+
             # Clean up the orphaned file on disk since ingestion failed
-            if stored_path.exists():
+            if stored_path is not None and stored_path.exists():
                 try:
                     stored_path.unlink()
                     logger.info("Cleaned up orphaned file from disk due to ingestion failure: %s", stored_path)

@@ -1,0 +1,34 @@
+import logging
+import os
+from redis import Redis
+from rq import Worker, SimpleWorker, Queue
+from backend.config.settings import get_settings
+
+# Configure logging format for worker logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+def main():
+    settings = get_settings()
+    logger.info("Initializing RQ Worker connected to Redis URL: %s", settings.redis_url)
+    redis_conn = Redis.from_url(settings.redis_url)
+    
+    # Pass connection directly to both Queue and Worker
+    from rq.serializers import JSONSerializer
+    queue = Queue("ingestion", connection=redis_conn, serializer=JSONSerializer)
+    
+    if os.name == "nt":
+        logger.info("Detected Windows OS: using SimpleWorker (in-process execution, no job isolation)")
+        worker = SimpleWorker([queue], connection=redis_conn, serializer=JSONSerializer)
+    else:
+        logger.info("Detected Unix/Linux OS: using standard Worker (fork-based execution with job isolation)")
+        worker = Worker([queue], connection=redis_conn, serializer=JSONSerializer)
+        
+    worker.work()
+
+if __name__ == '__main__':
+    main()
+

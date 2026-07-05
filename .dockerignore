@@ -1,0 +1,41 @@
+# Exclude Python virtual environments
+venvrag/
+venv/
+.venv/
+env/
+
+# Exclude Node dependencies and builds
+node_modules/
+frontend-react/node_modules/
+frontend-react/dist/
+
+# Exclude git metadata
+.git/
+.gitignore
+.gitattributes
+
+# Exclude local database files and uploads
+*.db
+*.db-journal
+milvus_local.db/
+backend/uploads/
+
+
+# Exclude python cache files and compiler output
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Exclude editor settings and logs
+.vscode/
+.idea/
+.cursor/
+backend/logs/
+*.log
+
+# Exclude environment files (loaded via env_file at runtime)
+.env
+.env*

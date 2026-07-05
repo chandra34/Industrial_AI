@@ -16,6 +16,7 @@ class PyMuPDFParser(BaseParser):
         pdf_bytes: bytes,
         document_id: str,
         source_filename: str,
+        metadata: dict | None = None,
     ) -> list[ChunkRecord]:
         pages = extract_pages_from_bytes(pdf_bytes)
-        return self.chunker.chunk(pages, document_id, source_filename)
+        return self.chunker.chunk(pages, document_id, source_filename, metadata=metadata)
