@@ -35,4 +35,5 @@ backend/uploads/*
 backend/logs/*
 
 # Local SQLite metadata database
-backend/metadata.db
+*.db
+*.db-journal

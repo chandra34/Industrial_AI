@@ -80,7 +80,9 @@ class IngestService:
             
             prompt = (
                 "You are an industrial safety document analyzer. Extract document metadata from the following text sample "
-                "taken from the beginning of a document. You must return a valid JSON object strictly matching the schema.\n\n"
+                "taken from the beginning of a document. You must return a valid JSON object strictly matching the schema. "
+                "CRITICAL: For the 'manufacturer' and 'equipment' fields, normalize the values to lowercase, singular form "
+                "(e.g. use 'centrifugal pump' instead of 'Centrifugal Pumps', 'boiler' instead of 'Boilers', 'siemens' instead of 'Siemens').\n\n"
                 f"Text Sample:\n{doc_text_sample[:4000]}"
             )
             
@@ -178,6 +180,12 @@ class IngestService:
                 for k in ["document_type", "manufacturer", "equipment", "revision", "language"]:
                     if final_meta.get(k) == "Unknown" and llm_meta.get(k):
                         final_meta[k] = llm_meta[k]
+
+            # Normalize manufacturer and equipment strings to lowercase and strip whitespace
+            mfr = final_meta.get("manufacturer")
+            equip = final_meta.get("equipment")
+            final_meta["manufacturer"] = mfr.strip().lower() if mfr else "unknown"
+            final_meta["equipment"] = equip.strip().lower() if equip else "unknown"
 
             # In-memory chunk enrichment with resolved metadata
             for chunk in chunks:
