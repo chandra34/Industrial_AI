@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ChatArea from './components/ChatArea';
+import SafetyReviewDashboard from './components/SafetyReviewDashboard';
 import DocumentsPanel from './components/DocumentsPanel';
 import UploadModal from './components/UploadModal';
 import { queryDocuments, getDocuments, deleteDocument } from './api/client';
@@ -156,6 +157,10 @@ export default function App() {
               onSend={handleSend}
               onUploadClick={() => setShowUpload(true)}
             />
+          )}
+
+          {activeView === 'review' && (
+            <SafetyReviewDashboard />
           )}
 
           {activeView === 'documents' && (

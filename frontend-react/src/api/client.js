@@ -169,5 +169,22 @@ export async function getJobStatus(jobId) {
   return request('GET', `/jobs/${jobId}`);
 }
 
-
-
+/**
+ * Submits a Permit-to-Work (PTW) for safety review against indexed SOPs and manuals.
+ *
+ * @async
+ * @param {string} permitText - The raw permit text or task steps to be reviewed.
+ * @param {string|null} [equipment=null] - Optional equipment name filter.
+ * @param {string|null} [manufacturer=null] - Optional manufacturer name filter.
+ * @returns {Promise<{status: string, summary: string, findings: Array<{severity: string, finding_type: string, description: string, recommendation: string, reference_source: string|null}>}>} The structured safety review report.
+ */
+export async function reviewPermit(permitText, equipment = null, manufacturer = null) {
+  return request('POST', '/review', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      permit_text: permitText,
+      equipment: equipment || null,
+      manufacturer: manufacturer || null,
+    }),
+  });
+}
