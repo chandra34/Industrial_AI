@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from backend.config.settings import Settings
 from backend.database.models import Document
 from backend.rag.embeddings import EmbeddingProvider
+from backend.rag.llm import LLMProvider
 from backend.ingestion.pipeline import get_parser
 from backend.vectordb.milvus_db import MilvusStore
 from fastapi.concurrency import run_in_threadpool
@@ -42,10 +43,12 @@ class IngestService:
         settings: Settings,
         vector_store: MilvusStore,
         embedding_service: EmbeddingProvider,
+        llm_service: LLMProvider,
     ) -> None:
         self.settings = settings
         self.vector_store = vector_store
         self.embedding_service = embedding_service
+        self.llm_service = llm_service
         self.upload_dir = settings.resolved_upload_dir
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -57,9 +60,8 @@ class IngestService:
         return stored_path, document_id
 
     async def _extract_metadata_via_llm(self, doc_text_sample: str) -> dict:
-        """Use Groq's openai/gpt-oss-120b model to extract document metadata using strict JSON schema."""
+        """Use the LLM service to extract document metadata using strict JSON schema."""
         import json
-        from groq import Groq
         from pydantic import BaseModel, Field
 
         class DocumentMetadata(BaseModel):
@@ -76,8 +78,6 @@ class IngestService:
             return {}
             
         try:
-            client = Groq(api_key=self.settings.groq_api_key)
-            
             prompt = (
                 "You are an industrial safety document analyzer. Extract document metadata from the following text sample "
                 "taken from the beginning of a document. You must return a valid JSON object strictly matching the schema. "
@@ -85,26 +85,13 @@ class IngestService:
                 "(e.g. use 'centrifugal pump' instead of 'Centrifugal Pumps', 'boiler' instead of 'Boilers', 'siemens' instead of 'Siemens').\n\n"
                 f"Text Sample:\n{doc_text_sample[:4000]}"
             )
-            
-            def call_groq():
-                return client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.0,
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "DocumentMetadata",
-                            "strict": True,
-                            "schema": DocumentMetadata.model_json_schema()
-                        }
-                    }
-                )
-                
-            completion = await run_in_threadpool(call_groq)
-            content = completion.choices[0].message.content.strip()
+            messages = [{"role": "user", "content": prompt}]
+            content = await self.llm_service.generate_structured_output(
+                messages=messages,
+                response_model=DocumentMetadata,
+                model="openai/gpt-oss-120b",
+                temperature=0.0
+            )
             
             logger.info("Raw LLM metadata extraction response: %s", content)
             return json.loads(content)

@@ -5,7 +5,7 @@ from redis import Redis
 from sqlalchemy.orm import Session
 
 from backend.config.settings import get_settings
-from backend.schemas.schemas import HealthResponse
+from backend.schemas.health import HealthResponse
 from backend.api.dependencies import get_db
 
 logger = logging.getLogger(__name__)

@@ -6,6 +6,7 @@ from backend.config.settings import Settings
 from backend.rag.llm import LLMProvider
 from backend.rag.prompts import build_messages
 from backend.rag.retrieval import RetrievedChunk, RetrievalService
+from backend.vectordb import build_scalar_filter
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +52,7 @@ class RAGPipeline:
 
     async def review_permit(self, request: "PTWReviewRequest", user_id: str) -> "SafetyReviewReport":
         """Audit a Permit-to-Work request against retrieved safety standards and return a structured report."""
-        from groq import Groq
-        from fastapi.concurrency import run_in_threadpool
-        from backend.schemas.schemas import SafetyReviewReport, PTWReviewRequest
+        from backend.schemas.safety import SafetyReviewReport, PTWReviewRequest
         from backend.rag.prompts import build_safety_review_messages
         
         logger.info(
@@ -62,13 +61,7 @@ class RAGPipeline:
         )
 
         # Build custom metadata filter expression if overrides are provided
-        filters = []
-        if request.manufacturer and request.manufacturer.strip().lower() != "unknown":
-            filters.append(f'manufacturer == "{request.manufacturer.strip().lower()}"')
-        if request.equipment and request.equipment.strip().lower() != "unknown":
-            filters.append(f'equipment == "{request.equipment.strip().lower()}"')
-        
-        metadata_filter = " and ".join(filters) if filters else None
+        metadata_filter = build_scalar_filter(request.manufacturer, request.equipment)
 
         # 1. Retrieve relevant safety standards context (using permit text as search query)
         sources = await self.retrieval_service.search(
@@ -84,30 +77,14 @@ class RAGPipeline:
             max_chars=self.settings.max_context_chars
         )
 
-        # 3. Call Groq with structured outputs
-        if not self.settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY is not configured")
-
-        client = Groq(api_key=self.settings.groq_api_key)
-
-        def call_groq():
-            return client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=messages,
-                temperature=0.0,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "SafetyReviewReport",
-                        "strict": True,
-                        "schema": SafetyReviewReport.model_json_schema()
-                    }
-                }
-            )
-
+        # 3. Call structured output on LLM Service
         start_llm = time.perf_counter()
-        completion = await run_in_threadpool(call_groq)
-        content = completion.choices[0].message.content.strip()
+        content = await self.llm_service.generate_structured_output(
+            messages=messages,
+            response_model=SafetyReviewReport,
+            model="openai/gpt-oss-120b",
+            temperature=0.0
+        )
         duration_llm = time.perf_counter() - start_llm
         logger.info("Query flow: safety review report generated | duration: %.3fs", duration_llm)
 

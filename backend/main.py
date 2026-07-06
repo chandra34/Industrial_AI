@@ -204,11 +204,11 @@ async def on_startup() -> None:
     else:
         logger.info("Reranker disabled")
 
-    retrieval_service = RetrievalService(settings, vector_store, embedding_service, reranker_service)
+    retrieval_service = RetrievalService(settings, vector_store, embedding_service, reranker_service, llm_service)
 
     app.state.vector_store = vector_store
     app.state.reranker_service = reranker_service
-    app.state.ingest_service = IngestService(settings, vector_store, embedding_service)
+    app.state.ingest_service = IngestService(settings, vector_store, embedding_service, llm_service)
     app.state.document_service = DocumentService(settings, vector_store)
     app.state.job_status_service = JobStatusService()
     app.state.rag_pipeline = RAGPipeline(settings, retrieval_service, llm_service)
