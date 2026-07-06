@@ -5,8 +5,10 @@ import time
 
 from backend.config.settings import Settings
 from backend.rag.embeddings import EmbeddingProvider
+from backend.rag.llm import LLMProvider
 from backend.services.reranker_service import RerankerService
 from backend.vectordb.milvus_db import MilvusStore, VectorSearchHit
+from backend.vectordb.filters import build_scalar_filter
 
 logger = logging.getLogger(__name__)
 
@@ -42,18 +44,18 @@ class RetrievalService:
         vector_store: MilvusStore,
         embedding_service: EmbeddingProvider,
         reranker_service: RerankerService | None = None,
+        llm_service: LLMProvider | None = None,
     ) -> None:
         self.settings = settings
         self.vector_store = vector_store
         self.embedding_service = embedding_service
         self.reranker_service = reranker_service
+        self.llm_service = llm_service
 
     async def _extract_intent_filter(self, query: str) -> str | None:
-        """Extract search intent filters (manufacturer/equipment) from the query using Groq."""
-        from groq import Groq
+        """Extract search intent filters (manufacturer/equipment) from the query using the LLM service."""
         import json
         from pydantic import BaseModel, Field
-        from fastapi.concurrency import run_in_threadpool
         import re
 
         class QueryIntent(BaseModel):
@@ -61,12 +63,10 @@ class RetrievalService:
             manufacturer: str = Field(description="Extracted equipment manufacturer name or 'Unknown'")
             equipment: str = Field(description="Extracted specific equipment model/name or 'Unknown'")
 
-        if not self.settings.groq_api_key:
+        if not self.llm_service:
             return None
 
         try:
-            client = Groq(api_key=self.settings.groq_api_key)
-
             prompt = (
                 "Analyze the following user search query or work permit request and extract any referenced "
                 "equipment manufacturer or specific equipment name/model.\n\n"
@@ -75,44 +75,22 @@ class RetrievalService:
                 "'siemens' instead of 'Siemens').\n\n"
                 f"Query: {query}"
             )
-
-            def call_groq():
-                return client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0,
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "QueryIntent",
-                            "strict": True,
-                            "schema": QueryIntent.model_json_schema()
-                        }
-                    }
-                )
-
-            completion = await run_in_threadpool(call_groq)
-            content = completion.choices[0].message.content.strip()
+            messages = [{"role": "user", "content": prompt}]
+            content = await self.llm_service.generate_structured_output(
+                messages=messages,
+                response_model=QueryIntent,
+                model="openai/gpt-oss-120b",
+                temperature=0.0
+            )
             intent_dict = json.loads(content)
 
-            def sanitize_val(val: str) -> str:
-                return re.sub(r"[^A-Za-z0-9._\s-]", "", val).strip()
-
-            filters = []
-            mfr = intent_dict.get("manufacturer")
-            equip = intent_dict.get("equipment")
-
-            if mfr and mfr != "Unknown":
-                filters.append(f'manufacturer == "{sanitize_val(mfr).lower()}"')
-            if equip and equip != "Unknown":
-                filters.append(f'equipment == "{sanitize_val(equip).lower()}"')
-
-            if filters:
-                expr = " and ".join(filters)
+            expr = build_scalar_filter(
+                intent_dict.get("manufacturer"),
+                intent_dict.get("equipment")
+            )
+            if expr:
                 logger.info("Extracted intent filter: %s", expr)
-                return expr
-
-            return None
+            return expr
         except Exception as e:
             logger.warning("Failed to extract query intent: %s", e)
             return None

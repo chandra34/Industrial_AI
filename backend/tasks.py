@@ -6,7 +6,7 @@ from backend.services.job_status_service import JobStatusService
 from backend.rag.embeddings import EmbeddingFactory
 from backend.vectordb.milvus_db import MilvusStore
 from backend.database.session import SessionLocal
-from backend.schemas.schemas import UploadResponse
+from backend.schemas.documents import UploadResponse
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,13 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
     """Asynchronous worker function that handles client initialization and runs document ingestion."""
     settings = get_settings()
     
+    from backend.rag.llm import LLMFactory
+    
     # Initialize standalone connections for this worker task process
     embedding_service = EmbeddingFactory.create(settings)
     vector_store = MilvusStore(settings)
-    ingest_service = IngestService(settings, vector_store, embedding_service)
+    llm_service = LLMFactory.create(settings)
+    ingest_service = IngestService(settings, vector_store, embedding_service, llm_service)
     job_status_service = JobStatusService()
     
     # Decode the base64 payload to binary bytes for parsing

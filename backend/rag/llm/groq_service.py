@@ -45,3 +45,43 @@ class GroqLLMService(LLMProvider):
         except Exception as exc:
             logger.exception("LLM generation failed due to unexpected error")
             raise RuntimeError("An unexpected error occurred during answer generation.") from exc
+
+    async def generate_structured_output(
+        self,
+        messages: list[dict[str, str]],
+        response_model: type,
+        model: str | None = None,
+        temperature: float = 0.0,
+    ) -> str:
+        """Send messages to the LLM and enforce a strict JSON output matching ``response_model``."""
+        try:
+            logger.info("Generating structured output using Groq provider with model: %s", model or self.settings.llm_model)
+            completion = await self.client.chat.completions.create(
+                model=model or self.settings.llm_model,
+                messages=messages,
+                temperature=temperature,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": response_model.__name__,
+                        "strict": True,
+                        "schema": response_model.model_json_schema()
+                    }
+                }
+            )
+            content = completion.choices[0].message.content
+            if not content:
+                raise RuntimeError("Groq returned an empty response")
+            return content.strip()
+        except APITimeoutError as exc:
+            logger.warning("Groq API request timed out: %s", exc)
+            raise RuntimeError("The LLM request timed out. Please try again.") from exc
+        except RateLimitError as exc:
+            logger.warning("Groq API rate limit hit: %s", exc)
+            raise RuntimeError("The LLM service is currently rate-limited. Please wait a moment and try again.") from exc
+        except APIStatusError as exc:
+            logger.error("Groq API returned status code %d: %s", exc.status_code, exc.message)
+            raise RuntimeError(f"LLM service returned an error status ({exc.status_code}).") from exc
+        except Exception as exc:
+            logger.exception("LLM structured output generation failed due to unexpected error")
+            raise RuntimeError("An unexpected error occurred during structured answer generation.") from exc

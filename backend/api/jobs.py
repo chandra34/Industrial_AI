@@ -10,7 +10,7 @@ from rq.serializers import JSONSerializer
 from sqlalchemy.orm import Session
 
 from backend.config.settings import get_settings
-from backend.schemas.schemas import UploadJobAcceptedResponse, JobStatusResponse
+from backend.schemas.jobs import UploadJobAcceptedResponse, JobStatusResponse
 from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import get_job_status_service, get_db
 from backend.services.job_status_service import JobStatusService

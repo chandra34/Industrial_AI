@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from backend.schemas.schemas import DocumentListResponse, DeleteResponse, DocumentItem
+from backend.schemas.documents import DocumentListResponse, DeleteResponse, DocumentItem
 from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import get_document_service, get_db
 from backend.services.document_service import (

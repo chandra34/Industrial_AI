@@ -2,7 +2,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.schemas.schemas import QueryRequest, QueryResponse, SourceChunkResponse, PTWReviewRequest, SafetyReviewReport
+from backend.schemas.query import QueryRequest, QueryResponse, SourceChunkResponse
+from backend.schemas.safety import PTWReviewRequest, SafetyReviewReport
 from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import get_rag_pipeline
 from backend.rag.pipeline import RAGPipeline

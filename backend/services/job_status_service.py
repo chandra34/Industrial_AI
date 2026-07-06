@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from backend.database.models import IngestionJob
-from backend.schemas.schemas import UploadResponse
+from backend.schemas.documents import UploadResponse
 
 logger = logging.getLogger(__name__)
 
