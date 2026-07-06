@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.schemas.schemas import QueryRequest, QueryResponse, SourceChunkResponse
+from backend.schemas.schemas import QueryRequest, QueryResponse, SourceChunkResponse, PTWReviewRequest, SafetyReviewReport
 from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import get_rag_pipeline
 from backend.rag.pipeline import RAGPipeline
@@ -54,3 +54,18 @@ async def query_documents(
         ],
         retrieved_chunk_count=len(result.sources),
     )
+
+
+@router.post("/review", response_model=SafetyReviewReport)
+async def review_permit(
+    payload: PTWReviewRequest,
+    current_user: FirebaseUser = Depends(get_current_user),
+    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+) -> SafetyReviewReport:
+    """Audit a Permit-to-Work request against retrieved safety standards."""
+
+    try:
+        return await pipeline.review_permit(payload, user_id=current_user.uid)
+    except Exception as exc:
+        logger.exception("Permit review failed")
+        raise HTTPException(status_code=500, detail="An internal server error occurred while reviewing the permit.") from exc
