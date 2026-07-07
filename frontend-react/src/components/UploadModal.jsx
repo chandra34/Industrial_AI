@@ -87,10 +87,12 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
   const [elapsedTime, setElapsedTime] = useState('0.0');
   
   const fileInputRef = useRef(null);
+  const activeSessionRef = useRef(null);
 
   // Reset modal state when opened/closed
   useEffect(() => {
     if (!isOpen) {
+      activeSessionRef.current = null; // Invalidate any running polling sessions
       handleReset();
     }
   }, [isOpen]);
@@ -108,6 +110,8 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     setError('');
     setUploading(true);
     const startTime = Date.now();
+    const sessionId = Math.random().toString(36).substring(7);
+    activeSessionRef.current = sessionId;
 
     try {
       const uploadResponse = await uploadPDF(file);
@@ -120,8 +124,12 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
       const maxPolls = 180; // 3 minutes timeout
 
       while ((jobStatus === 'pending' || jobStatus === 'processing') && pollCount < maxPolls) {
+        if (activeSessionRef.current !== sessionId) return; // Drop updates if canceled
         await new Promise((resolve) => setTimeout(resolve, 1000));
+        
         const statusResponse = await getJobStatus(jobId);
+        if (activeSessionRef.current !== sessionId) return; // Guard check after API response
+        
         jobStatus = statusResponse.status;
         jobResult = statusResponse.result;
         if (jobStatus === 'failed') {
@@ -134,6 +142,8 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
         throw new Error('Upload took too long to process');
       }
 
+      if (activeSessionRef.current !== sessionId) return; // Final verification
+
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       
       setElapsedTime(elapsed);
@@ -143,8 +153,10 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
       // Update parent list
       onUploaded(jobResult);
     } catch (err) {
-      setError(err.message || 'Upload failed');
-      setUploading(false);
+      if (activeSessionRef.current === sessionId) {
+        setError(err.message || 'Upload failed');
+        setUploading(false);
+      }
     }
   }
 
@@ -183,7 +195,7 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
               </button>
             </div>
           ) : (
-            <button className="upload-close-btn" onClick={onClose}>✕</button>
+            <button className="upload-close-btn" onClick={onClose} aria-label="Close upload modal">✕</button>
           )}
         </div>
 

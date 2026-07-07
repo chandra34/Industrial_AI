@@ -3,13 +3,19 @@ import SourceBadges from './SourceBadges';
 import './ChatMessage.css';
 
 /**
- * Formats a Date object to a localized 12-hour AM/PM string representation.
+ * Formats a Date object or date-string to a localized 12-hour AM/PM string representation.
  *
- * @param {Date} date - The date to format.
- * @returns {string} The formatted time string (e.g. "02:30 PM").
+ * @param {Date|string} dateVal - The date to format.
+ * @returns {string} The formatted time string (e.g. "02:30 PM") or empty string if invalid.
  */
-function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+function formatTime(dateVal) {
+  if (!dateVal) return '';
+  const parsedDate = dateVal instanceof Date ? dateVal : new Date(dateVal);
+  if (isNaN(parsedDate.getTime())) {
+    console.warn('Invalid date value provided to formatTime:', dateVal);
+    return '';
+  }
+  return parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 /**

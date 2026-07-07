@@ -7,6 +7,25 @@ import { auth } from './firebase';
 const API_BASE = '/api/v1';
 
 /**
+ * Resolves Firebase ID token and returns an Authorization header object if logged in.
+ *
+ * @private
+ * @async
+ * @returns {Promise<Record<string, string>>} Headers object.
+ */
+async function getAuthHeaders() {
+  if (auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      return { 'Authorization': `Bearer ${token}` };
+    } catch (e) {
+      console.error('Failed to get Firebase Auth ID token:', e);
+    }
+  }
+  return {};
+}
+
+/**
  * Private helper function to perform authenticated HTTP requests to the backend server.
  * Appends Firebase Auth ID tokens automatically to the 'Authorization' headers if a user is logged in.
  *
@@ -20,19 +39,15 @@ const API_BASE = '/api/v1';
  */
 async function request(method, path, options = {}) {
   const url = `${API_BASE}${path}`;
-  const config = { method, ...options };
-
-  if (auth.currentUser) {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      config.headers = {
-        ...config.headers,
-        'Authorization': `Bearer ${token}`
-      };
-    } catch (e) {
-      console.error('Failed to get Firebase Auth ID token:', e);
+  const authHeaders = await getAuthHeaders();
+  const config = {
+    method,
+    ...options,
+    headers: {
+      ...authHeaders,
+      ...options.headers
     }
-  }
+  };
 
   const response = await fetch(url, config);
 
@@ -121,18 +136,11 @@ export async function deleteDocument(documentId) {
  */
 export async function downloadDocument(documentId, filename) {
   const url = `${API_BASE}/documents/${documentId}/download`;
-  const config = { method: 'GET' };
-
-  if (auth.currentUser) {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    } catch (e) {
-      console.error('Failed to get Firebase Auth ID token:', e);
-    }
-  }
+  const authHeaders = await getAuthHeaders();
+  const config = {
+    method: 'GET',
+    headers: authHeaders
+  };
 
   const response = await fetch(url, config);
 

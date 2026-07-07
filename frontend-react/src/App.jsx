@@ -7,7 +7,7 @@ import DocumentsPanel from './components/DocumentsPanel';
 import UploadModal from './components/UploadModal';
 import { queryDocuments, getDocuments, deleteDocument } from './api/client';
 import { useAuth } from './context/AuthContext';
-import Login from './components/Login';
+import LandingPage from './components/LandingPage';
 
 /**
  * The main App layout component managing the RAG application lifecycle.
@@ -68,7 +68,7 @@ export default function App() {
   }, [user]);
 
   if (!user) {
-    return <Login />;
+    return <LandingPage />;
   }
 
   /**

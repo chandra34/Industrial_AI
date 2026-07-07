@@ -41,7 +41,7 @@ export default function ChatArea({ messages, isLoading, onSend, onUploadClick })
         {/* Messages */}
         <div className="chat-messages">
           {messages.map((msg, index) => (
-            <ChatMessage key={index} message={msg} />
+            <ChatMessage key={msg.id || `${msg.role}-${new Date(msg.timestamp).getTime()}-${index}`} message={msg} />
           ))}
 
           {isLoading && (
