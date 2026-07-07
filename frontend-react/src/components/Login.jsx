@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth, googleProvider } from '../api/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import './Login.css';
+import styles from './Login.module.css';
 
 /**
  * Login component rendering authentication dialogs.
@@ -73,8 +73,8 @@ export default function Login({ initialSignUp = false, onClose = null }) {
   };
 
   return (
-    <div className="login-container" style={onClose ? { minHeight: 'auto', width: 'auto', background: 'none', padding: 0 } : {}}>
-      <div className="login-card" style={{ position: 'relative' }}>
+    <div className={styles.loginContainer} style={onClose ? { minHeight: 'auto', width: 'auto', background: 'none', padding: 0 } : {}}>
+      <div className={styles.loginCard} style={{ position: 'relative' }}>
         {onClose && (
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -83,8 +83,8 @@ export default function Login({ initialSignUp = false, onClose = null }) {
             </svg>
           </button>
         )}
-        <div className="login-header">
-          <div className="login-logo">
+        <div className={styles.loginHeader}>
+          <div className={styles.loginLogo}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
             </svg>
@@ -93,10 +93,10 @@ export default function Login({ initialSignUp = false, onClose = null }) {
           <p>{isSignUp ? 'Create your account to start managing PDFs' : 'Sign in to access your secure document space'}</p>
         </div>
 
-        {error && <div className="login-error">{error}</div>}
+        {error && <div className={styles.loginError}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
+        <form onSubmit={handleSubmit} className={styles.loginForm}>
+          <div className={styles.formGroup}>
             <label htmlFor="email">Email Address</label>
             <input
               id="email"
@@ -109,7 +109,7 @@ export default function Login({ initialSignUp = false, onClose = null }) {
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label htmlFor="password">Password</label>
             <input
               id="password"
@@ -122,16 +122,16 @@ export default function Login({ initialSignUp = false, onClose = null }) {
             />
           </div>
 
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className={styles.btnPrimary} disabled={loading}>
             {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
           </button>
         </form>
 
-        <div className="divider">
+        <div className={styles.divider}>
           <span>or</span>
         </div>
 
-        <button onClick={handleGoogleLogin} className="btn-google" disabled={loading}>
+        <button onClick={handleGoogleLogin} className={styles.btnGoogle} disabled={loading}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -141,7 +141,7 @@ export default function Login({ initialSignUp = false, onClose = null }) {
           Continue with Google
         </button>
 
-        <div className="login-footer">
+        <div className={styles.loginFooter}>
           {isSignUp ? (
             <span>
               Already have an account?{' '}

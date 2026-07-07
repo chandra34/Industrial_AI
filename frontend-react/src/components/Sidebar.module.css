@@ -8,17 +8,17 @@
   flex-shrink: 0;
 }
 
-.sidebar-logo {
+.sidebarLogo {
   margin-bottom: 32px;
 }
 
-.sidebar-nav {
+.sidebarNav {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.sidebar-btn {
+.sidebarBtn {
   width: 42px;
   height: 42px;
   border-radius: var(--radius-md);
@@ -29,12 +29,12 @@
   transition: all 0.2s ease;
 }
 
-.sidebar-btn:hover {
+.sidebarBtn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--sidebar-icon-active);
 }
 
-.sidebar-btn.active {
+.sidebarBtn.active {
   background: var(--sidebar-accent);
   color: var(--sidebar-icon-active);
 }

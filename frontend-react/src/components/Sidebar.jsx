@@ -1,4 +1,4 @@
-import './Sidebar.css';
+import styles from './Sidebar.module.css';
 
 /**
  * Sidebar component containing application navigation buttons.
@@ -13,14 +13,14 @@ import './Sidebar.css';
 export default function Sidebar({ activeView, onViewChange }) {
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
+    <aside className={styles.sidebar}>
+      <div className={styles.sidebarLogo}>
         <img src="/favicon.svg" alt="Logo" width="24" height="24" />
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className={styles.sidebarNav}>
         <button
-          className={`sidebar-btn ${activeView === 'chat' ? 'active' : ''}`}
+          className={`${styles.sidebarBtn} ${activeView === 'chat' ? styles.active : ''}`}
           onClick={() => onViewChange('chat')}
           title="Chat"
           aria-label="Chat View"
@@ -31,7 +31,7 @@ export default function Sidebar({ activeView, onViewChange }) {
         </button>
 
         <button
-          className={`sidebar-btn ${activeView === 'review' ? 'active' : ''}`}
+          className={`${styles.sidebarBtn} ${activeView === 'review' ? styles.active : ''}`}
           onClick={() => onViewChange('review')}
           title="Safety Audit"
           aria-label="Safety Audit Dashboard"
@@ -42,7 +42,7 @@ export default function Sidebar({ activeView, onViewChange }) {
         </button>
 
         <button
-          className={`sidebar-btn ${activeView === 'documents' ? 'active' : ''}`}
+          className={`${styles.sidebarBtn} ${activeView === 'documents' ? 'active' : ''}`}
           onClick={() => onViewChange('documents')}
           title="Documents"
           aria-label="Indexed Documents Library"
@@ -56,7 +56,7 @@ export default function Sidebar({ activeView, onViewChange }) {
         </button>
 
         <button
-          className={`sidebar-btn ${activeView === 'settings' ? 'active' : ''}`}
+          className={`${styles.sidebarBtn} ${activeView === 'settings' ? 'active' : ''}`}
           onClick={() => onViewChange('settings')}
           title="Settings"
           aria-label="Retrieval Settings"
