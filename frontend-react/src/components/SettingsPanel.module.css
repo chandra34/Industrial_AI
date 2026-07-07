@@ -1,0 +1,79 @@
+.settingsContainer {
+  padding: 32px 24px;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.settingsTitle {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.settingsCard {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--bot-bubble-shadow);
+  border: 1px solid var(--border-light);
+}
+
+.settingsSubtitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.settingsDescription {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.settingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settingsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settingsLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.settingsValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  background: #eae6ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.settingsSlider {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 6px;
+  border-radius: 3px;
+  background: #e5e7eb;
+  outline: none;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.settingsHint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
