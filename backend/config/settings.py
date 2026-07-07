@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     project_root: Path = Path(__file__).resolve().parents[2]
     upload_dir: Path = Path("backend/uploads")
     max_upload_mb: int = Field(default=15, alias="MAX_UPLOAD_MB")
+    max_page_limit: int = Field(default=600, alias="MAX_PAGE_LIMIT")
     database_url: str = Field(default="sqlite:///./metadata.db", alias="DATABASE_URL")
 
     milvus_host: str = Field(default="localhost", alias="MILVUS_HOST")

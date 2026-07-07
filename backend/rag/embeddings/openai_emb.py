@@ -1,6 +1,8 @@
 import logging
 import numpy as np
+import openai
 from openai import AsyncOpenAI
+from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception
 
 from backend.config.settings import Settings
 from backend.rag.embeddings.base import EmbeddingProvider
@@ -25,6 +27,16 @@ class OpenAIEmbedding(EmbeddingProvider):
 
 
 
+    @retry(
+        retry=retry_if_exception(lambda e: isinstance(e, openai.RateLimitError)),
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(5),
+        reraise=True,
+        before_sleep=lambda retry_state: logger.warning(
+            f"OpenAI API rate limit (429) hit. Retrying in {retry_state.next_action.sleep:.2f} seconds... "
+            f"Attempt {retry_state.attempt_number}."
+        )
+    )
     async def _embed_batch(self, texts: list[str]) -> np.ndarray:
         # Note: 'dimensions' parameter is only supported by 'text-embedding-3-*' models
         kwargs = {
