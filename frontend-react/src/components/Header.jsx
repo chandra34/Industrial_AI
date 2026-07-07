@@ -10,17 +10,15 @@ import './Header.css';
  */
 export default function Header() {
   const { user, logout } = useAuth();
+  const appName = import.meta.env.VITE_APP_NAME || 'Milvus RAG Assistant';
 
   const initial = user?.email ? user.email.charAt(0).toUpperCase() : 'U';
 
   return (
     <header className="header">
       <div className="header-left">
-        <svg className="header-icon" width="28" height="28" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#6C63FF" strokeWidth="2" />
-          <path d="M8 12l3 3 5-6" stroke="#6C63FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <span className="header-title">Milvus RAG Assistant</span>
+        <img src="/favicon.svg" alt="Logo" width="28" height="28" style={{ marginRight: '10px' }} />
+        <span className="header-title">{appName}</span>
       </div>
       <div className="header-right">
         {user && <span className="header-user-email" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{user.email}</span>}

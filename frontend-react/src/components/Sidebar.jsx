@@ -15,10 +15,7 @@ export default function Sidebar({ activeView, onViewChange }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#6C63FF" strokeWidth="2" />
-          <path d="M8 12l3 3 5-6" stroke="#6C63FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <img src="/favicon.svg" alt="Logo" width="24" height="24" />
       </div>
 
       <nav className="sidebar-nav">
@@ -26,6 +23,7 @@ export default function Sidebar({ activeView, onViewChange }) {
           className={`sidebar-btn ${activeView === 'chat' ? 'active' : ''}`}
           onClick={() => onViewChange('chat')}
           title="Chat"
+          aria-label="Chat View"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -36,6 +34,7 @@ export default function Sidebar({ activeView, onViewChange }) {
           className={`sidebar-btn ${activeView === 'review' ? 'active' : ''}`}
           onClick={() => onViewChange('review')}
           title="Safety Audit"
+          aria-label="Safety Audit Dashboard"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -46,6 +45,7 @@ export default function Sidebar({ activeView, onViewChange }) {
           className={`sidebar-btn ${activeView === 'documents' ? 'active' : ''}`}
           onClick={() => onViewChange('documents')}
           title="Documents"
+          aria-label="Indexed Documents Library"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -59,6 +59,7 @@ export default function Sidebar({ activeView, onViewChange }) {
           className={`sidebar-btn ${activeView === 'settings' ? 'active' : ''}`}
           onClick={() => onViewChange('settings')}
           title="Settings"
+          aria-label="Retrieval Settings"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

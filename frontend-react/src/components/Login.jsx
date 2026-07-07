@@ -10,12 +10,14 @@ import './Login.css';
  * @component
  * @returns {React.JSX.Element} The rendered login card interface.
  */
-export default function Login() {
-  const [isSignUp, setIsSignUp] = useState(false);
+export default function Login({ initialSignUp = false, onClose = null }) {
+  const [isSignUp, setIsSignUp] = useState(initialSignUp);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const appName = import.meta.env.VITE_APP_NAME || 'RAG Documents App';
 
   /**
    * Submits authentication forms. Registers or authenticates users using Firebase Auth methods.
@@ -71,15 +73,23 @@ export default function Login() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
+    <div className="login-container" style={onClose ? { minHeight: 'auto', width: 'auto', background: 'none', padding: 0 } : {}}>
+      <div className="login-card" style={{ position: 'relative' }}>
+        {onClose && (
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        )}
         <div className="login-header">
           <div className="login-logo">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
             </svg>
           </div>
-          <h1>RAG Documents App</h1>
+          <h1>{appName}</h1>
           <p>{isSignUp ? 'Create your account to start managing PDFs' : 'Sign in to access your secure document space'}</p>
         </div>
 

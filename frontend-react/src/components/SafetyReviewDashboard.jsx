@@ -195,7 +195,7 @@ export default function SafetyReviewDashboard() {
                 </h4>
 
                 {report.findings.map((finding, idx) => (
-                  <div key={idx} className={`finding-card ${finding.severity.toLowerCase()}`}>
+                  <div key={finding.finding_id || `${finding.finding_type}-${finding.severity}-${idx}`} className={`finding-card ${finding.severity.toLowerCase()}`}>
                     <div className="finding-badges">
                       <span className={`severity-badge ${finding.severity.toLowerCase()}`}>
                         {finding.severity}
