@@ -2,11 +2,18 @@ import logging
 import numpy as np
 from google import genai
 from google.genai import types
+from google.genai.errors import APIError
+from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception
 
 from backend.config.settings import Settings
 from backend.rag.embeddings.base import EmbeddingProvider
 
 logger = logging.getLogger(__name__)
+
+def is_gemini_rate_limit(exception: Exception) -> bool:
+    """Helper to detect Gemini API rate limits (HTTP 429)."""
+    return isinstance(exception, APIError) and exception.code == 429
+
 
 class GeminiEmbedding(EmbeddingProvider):
     """Google Gemini embedding provider with L2-normalized vectors."""
@@ -35,6 +42,16 @@ class GeminiEmbedding(EmbeddingProvider):
         norms = np.where(norms == 0, 1, norms)
         return (vectors / norms).astype(np.float32)
 
+    @retry(
+        retry=retry_if_exception(is_gemini_rate_limit),
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(5),
+        reraise=True,
+        before_sleep=lambda retry_state: logger.warning(
+            f"Gemini API rate limit (429) hit. Retrying in {retry_state.next_action.sleep:.2f} seconds... "
+            f"Attempt {retry_state.attempt_number}."
+        )
+    )
     async def _embed_batch(self, texts: list[str]) -> np.ndarray:
         result = await self.client.aio.models.embed_content(
             model=self.settings.embedding_model_name,

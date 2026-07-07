@@ -2,6 +2,7 @@ import base64
 import logging
 from pathlib import Path
 from uuid import uuid4
+import fitz
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from redis import Redis
@@ -62,6 +63,25 @@ async def upload_pdf(
 
     # Cast back to bytes for downstream processing
     file_bytes = bytes(file_bytes)
+
+    # Verify document page limit using PyMuPDF (fitz)
+    try:
+        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+            page_count = doc.page_count
+        if page_count > settings.max_page_limit:
+            logger.warning("Upload rejected: file has %d pages, limit is %d", page_count, settings.max_page_limit)
+            raise HTTPException(
+                status_code=413,
+                detail=f"Document exceeds the maximum limit of {settings.max_page_limit} pages. Your file has {page_count} pages.",
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to verify PDF structure during upload")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to parse PDF structure. The file might be corrupted.",
+        ) from exc
 
     job_id = uuid4().hex
     job_status_service.create_job(db, job_id, current_user.uid)
