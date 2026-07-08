@@ -5,7 +5,7 @@ from backend.services.ingest_service import IngestService
 from backend.services.job_status_service import JobStatusService
 from backend.rag.embeddings import EmbeddingFactory
 from backend.vectordb.milvus_db import MilvusStore
-from backend.database.session import SessionLocal
+from backend.database.session import AsyncSessionLocal
 from backend.schemas.documents import UploadResponse
 
 logger = logging.getLogger(__name__)
@@ -39,36 +39,35 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
     import base64
     file_bytes = base64.b64decode(file_bytes_b64)
     
-    db = SessionLocal()
-    try:
-        job_status_service.update_status(db, job_id, "processing")
-        
-        # Execute the main ingestion steps (parse, chunk, embed, store, metadata db write)
-        result = await ingest_service.ingest_pdf(file_bytes, filename, user_id, db=db, metadata=metadata)
-        
-        upload_response = UploadResponse(
-            document_id=result.document_id,
-            filename=result.filename,
-            stored_path=result.stored_path,
-            page_count=result.page_count,
-            chunk_count=result.chunk_count,
-            embedded_count=result.embedded_count,
-            document_type=result.document_type,
-            manufacturer=result.manufacturer,
-            equipment=result.equipment,
-            revision=result.revision,
-            language=result.language,
-        )
-        job_status_service.update_status(db, job_id, "completed", result=upload_response)
-        logger.info("Background ingestion task completed successfully for job: %s", job_id)
-    except Exception as exc:
-        logger.exception("Background ingestion failed for job: %s, file: %s", job_id, filename)
-        job_status_service.update_status(db, job_id, "failed", error=str(exc))
-        raise exc
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as db:
         try:
-            await vector_store.close()
-            logger.info("Closed MilvusStore connection in background worker task")
-        except Exception as store_exc:
-            logger.warning("Error closing MilvusStore connection in background worker: %s", store_exc)
+            await job_status_service.update_status(db, job_id, "processing")
+            
+            # Execute the main ingestion steps (parse, chunk, embed, store, metadata db write)
+            result = await ingest_service.ingest_pdf(file_bytes, filename, user_id, db=db, metadata=metadata)
+            
+            upload_response = UploadResponse(
+                document_id=result.document_id,
+                filename=result.filename,
+                stored_path=result.stored_path,
+                page_count=result.page_count,
+                chunk_count=result.chunk_count,
+                embedded_count=result.embedded_count,
+                document_type=result.document_type,
+                manufacturer=result.manufacturer,
+                equipment=result.equipment,
+                revision=result.revision,
+                language=result.language,
+            )
+            await job_status_service.update_status(db, job_id, "completed", result=upload_response)
+            logger.info("Background ingestion task completed successfully for job: %s", job_id)
+        except Exception as exc:
+            logger.exception("Background ingestion failed for job: %s, file: %s", job_id, filename)
+            await job_status_service.update_status(db, job_id, "failed", error=str(exc))
+            raise exc
+        finally:
+            try:
+                await vector_store.close()
+                logger.info("Closed MilvusStore connection in background worker task")
+            except Exception as store_exc:
+                logger.warning("Error closing MilvusStore connection in background worker: %s", store_exc)

@@ -1,7 +1,10 @@
+import pytest
 from backend.database.models import Document, IngestionJob
 from fastapi.testclient import TestClient
+from sqlalchemy.future import select
 
-def test_db_sanity(db_session):
+@pytest.mark.asyncio
+async def test_db_sanity(db_session):
     """Verify that the in-memory SQLite database can create and query tables successfully."""
     # Create a test document record
     doc = Document(
@@ -17,10 +20,11 @@ def test_db_sanity(db_session):
         equipment="turbine",
     )
     db_session.add(doc)
-    db_session.commit()
+    await db_session.commit()
 
     # Query the document record
-    retrieved_doc = db_session.query(Document).filter_by(id="test-doc-id-123").first()
+    res = await db_session.execute(select(Document).filter(Document.id == "test-doc-id-123"))
+    retrieved_doc = res.scalars().first()
     assert retrieved_doc is not None
     assert retrieved_doc.filename == "manual.pdf"
     assert retrieved_doc.manufacturer == "siemens"
@@ -32,15 +36,17 @@ def test_db_sanity(db_session):
         status="pending",
     )
     db_session.add(job)
-    db_session.commit()
+    await db_session.commit()
 
     # Query the job record
-    retrieved_job = db_session.query(IngestionJob).filter_by(id="test-job-id-456").first()
+    res = await db_session.execute(select(IngestionJob).filter(IngestionJob.id == "test-job-id-456"))
+    retrieved_job = res.scalars().first()
     assert retrieved_job is not None
     assert retrieved_job.status == "pending"
 
 
-def test_health_route_sanity(app_client: TestClient):
+@pytest.mark.asyncio
+async def test_health_route_sanity(app_client: TestClient):
     """Verify that the FastAPI health check endpoint is responsive and returns correct values."""
     response = app_client.get("/api/v1/health")
     assert response.status_code == 200
@@ -51,7 +57,8 @@ def test_health_route_sanity(app_client: TestClient):
     assert "llm_model" in data
 
 
-def test_readiness_route_sanity(app_client: TestClient):
+@pytest.mark.asyncio
+async def test_readiness_route_sanity(app_client: TestClient):
     """Verify that the deep readiness check endpoint resolves dependencies using mocks."""
     response = app_client.get("/api/v1/healthz/readiness")
     assert response.status_code == 200

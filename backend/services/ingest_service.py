@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 from uuid import uuid4
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config.settings import Settings
 from backend.database.models import Document
@@ -99,7 +99,7 @@ class IngestService:
             logger.exception("Failed to extract metadata via Groq structured outputs: %s", e)
             return {}
 
-    async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str, db: Session | None = None, metadata: dict | None = None) -> IngestionResult:
+    async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str, db: AsyncSession | None = None, metadata: dict | None = None) -> IngestionResult:
         """Parse PDFs, chunk text, embed vectors, and persist them to Milvus."""
         import time
         from backend.utils.logging_context import document_id_var
@@ -217,7 +217,7 @@ class IngestService:
                     language=final_meta.get("language"),
                 )
                 db.add(doc_record)
-                db.commit()
+                await db.commit()
                 logger.info("Upload flow: document metadata persisted to database | document_id: %s", document_id)
 
             logger.info("Upload flow: request completed successfully | document_id: %s", document_id)

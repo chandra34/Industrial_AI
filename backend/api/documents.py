@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.schemas.documents import DocumentListResponse, DeleteResponse, DocumentItem
 from backend.api.auth import get_current_user, FirebaseUser
@@ -21,7 +21,7 @@ router = APIRouter()
 async def list_documents(
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> DocumentListResponse:
     """List indexed documents belonging to the authenticated user."""
     try:
@@ -51,7 +51,7 @@ async def delete_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> DeleteResponse:
     """Delete a document's vectors and raw file for the user."""
     from backend.utils.logging_context import document_id_var
@@ -72,7 +72,7 @@ async def download_document(
     document_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> FileResponse:
     """Download the original PDF file for an owned document."""
     from backend.utils.logging_context import document_id_var

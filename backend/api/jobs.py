@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from redis import Redis
 from rq import Queue
 from rq.serializers import JSONSerializer
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config.settings import get_settings
 from backend.schemas.jobs import UploadJobAcceptedResponse, JobStatusResponse
@@ -37,7 +37,7 @@ async def upload_pdf(
     language: str | None = Form(None),
     current_user: FirebaseUser = Depends(get_current_user),
     job_status_service: JobStatusService = Depends(get_job_status_service),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> UploadJobAcceptedResponse:
     """Accept a PDF upload, start ingestion in the background, and return a job identifier."""
     if not file.filename:
@@ -84,7 +84,7 @@ async def upload_pdf(
         ) from exc
 
     job_id = uuid4().hex
-    job_status_service.create_job(db, job_id, current_user.uid)
+    await job_status_service.create_job(db, job_id, current_user.uid)
 
     file_bytes_b64 = base64.b64encode(file_bytes).decode("utf-8")
 
@@ -117,10 +117,10 @@ async def get_job_status(
     job_id: str,
     current_user: FirebaseUser = Depends(get_current_user),
     job_status_service: JobStatusService = Depends(get_job_status_service),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> JobStatusResponse:
     """Retrieve status and result of a background document ingestion job."""
-    job = job_status_service.get_job(db, job_id, current_user.uid)
+    job = await job_status_service.get_job(db, job_id, current_user.uid)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 

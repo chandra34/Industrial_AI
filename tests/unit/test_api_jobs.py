@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from backend.database.models import IngestionJob
 from backend.schemas.jobs import UploadJobAcceptedResponse, JobStatusResponse
 from backend.config.settings import get_settings
+from sqlalchemy.future import select
 
 @pytest.fixture
 def mock_fitz():
@@ -17,7 +18,8 @@ def mock_fitz():
         yield p, mock_doc
 
 
-def test_api_upload_success(app_client: TestClient, db_session, mock_fitz):
+@pytest.mark.asyncio
+async def test_api_upload_success(app_client: TestClient, db_session, mock_fitz):
     """Test that a valid PDF upload successfully initiates a background job."""
     file_payload = {"file": ("manual.pdf", b"%PDF-1.4 standard dummy bytes", "application/pdf")}
     metadata = {
@@ -41,7 +43,8 @@ def test_api_upload_success(app_client: TestClient, db_session, mock_fitz):
 
         # Check that job is recorded in SQLite
         job_id = data["job_id"]
-        job_record = db_session.query(IngestionJob).filter_by(id=job_id).first()
+        res = await db_session.execute(select(IngestionJob).filter(IngestionJob.id == job_id))
+        job_record = res.scalars().first()
         assert job_record is not None
         assert job_record.status == "pending"
 
@@ -51,7 +54,8 @@ def test_api_upload_success(app_client: TestClient, db_session, mock_fitz):
         assert called_args[1] == job_id  # job_id passed to run_ingest_task
 
 
-def test_api_upload_non_pdf(app_client: TestClient):
+@pytest.mark.asyncio
+async def test_api_upload_non_pdf(app_client: TestClient):
     """Test that uploading a non-PDF file returns a 400 Bad Request error."""
     file_payload = {"file": ("test.txt", b"plain text files are not supported", "text/plain")}
     response = app_client.post("/api/v1/upload", files=file_payload)
@@ -60,7 +64,8 @@ def test_api_upload_non_pdf(app_client: TestClient):
     assert "pdf" in response.json()["detail"].lower()
 
 
-def test_api_upload_size_limit(app_client: TestClient):
+@pytest.mark.asyncio
+async def test_api_upload_size_limit(app_client: TestClient):
     """Test that files exceeding the maximum file size limit are rejected with 413."""
     file_payload = {"file": ("large_manual.pdf", b"x" * 1024 * 1024, "application/pdf")}
     
@@ -72,7 +77,8 @@ def test_api_upload_size_limit(app_client: TestClient):
         assert "size" in response.json()["detail"].lower()
 
 
-def test_api_upload_page_limit(app_client: TestClient, mock_fitz):
+@pytest.mark.asyncio
+async def test_api_upload_page_limit(app_client: TestClient, mock_fitz):
     """Test that PDFs exceeding the maximum page count limit are rejected with 413."""
     patch_open, mock_doc = mock_fitz
     
@@ -85,7 +91,8 @@ def test_api_upload_page_limit(app_client: TestClient, mock_fitz):
     assert "exceeds the maximum limit" in response.json()["detail"].lower()
 
 
-def test_api_job_status_retrieval(app_client: TestClient, db_session):
+@pytest.mark.asyncio
+async def test_api_job_status_retrieval(app_client: TestClient, db_session):
     """Test that job status retrieval endpoint matches actual database entries."""
     # Insert completed job record
     job_completed = IngestionJob(
@@ -103,7 +110,7 @@ def test_api_job_status_retrieval(app_client: TestClient, db_session):
     )
     db_session.add(job_completed)
     db_session.add(job_failed)
-    db_session.commit()
+    await db_session.commit()
 
     # Query completed job
     resp = app_client.get("/api/v1/jobs/job-comp-1")

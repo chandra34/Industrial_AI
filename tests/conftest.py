@@ -22,8 +22,7 @@ sys.modules["rq.serializers"] = MagicMock()
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from backend.database.models import Base
 from backend.api.dependencies import get_db as dep_get_db
@@ -35,8 +34,8 @@ from pathlib import Path
 
 DB_FILE = Path("test_temp.db")
 # Create SQLite engine for tests using a temporary file
-engine = create_engine(f"sqlite:///{DB_FILE}", connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_async_engine(f"sqlite+aiosqlite:///{DB_FILE}", connect_args={"check_same_thread": False})
+TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -66,7 +65,7 @@ def setup_mock_environment():
 
 
 @pytest.fixture(scope="function")
-def db_session():
+async def db_session():
     """Fixture providing an isolated SQLite database session."""
     # Ensure any residual DB file is cleaned up first
     if DB_FILE.exists():
@@ -75,18 +74,23 @@ def db_session():
         except Exception:
             pass
             
-    Base.metadata.create_all(bind=engine)
-    session = TestingSessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
-        if DB_FILE.exists():
-            try:
-                DB_FILE.unlink()
-            except Exception:
-                pass
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
+    async with TestingSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+            
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        
+    if DB_FILE.exists():
+        try:
+            DB_FILE.unlink()
+        except Exception:
+            pass
 
 
 @pytest.fixture(scope="function")
@@ -96,15 +100,12 @@ def mock_firebase_user():
 
 
 @pytest.fixture(scope="function")
-def app_client(db_session, mock_firebase_user):
+async def app_client(db_session, mock_firebase_user):
     """Fixture providing a FastAPI TestClient with overrides."""
     from backend.main import app
 
-    def _override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+    async def _override_get_db():
+        yield db_session
 
     def _override_get_current_user():
         return mock_firebase_user

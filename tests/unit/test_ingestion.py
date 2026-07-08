@@ -5,6 +5,7 @@ from pathlib import Path
 from backend.config.settings import get_settings
 from backend.services.ingest_service import IngestService, IngestionResult
 from backend.database.models import Document
+from sqlalchemy.future import select
 from tests.mock_providers import MockEmbeddingProvider, MockLLMProvider, MockMilvusStore
 
 @pytest.fixture
@@ -43,8 +44,8 @@ async def test_ingest_pdf_success(ingest_service, db_session):
     assert result.manufacturer == "siemens"  # Checks normalization
     assert result.equipment == "centrifugal pump"  # Checks normalization
 
-    # Check SQLite database entry
-    doc_in_db = db_session.query(Document).filter_by(id=result.document_id).first()
+    res = await db_session.execute(select(Document).filter(Document.id == result.document_id))
+    doc_in_db = res.scalars().first()
     assert doc_in_db is not None
     assert doc_in_db.filename == filename
     assert doc_in_db.manufacturer == "siemens"
