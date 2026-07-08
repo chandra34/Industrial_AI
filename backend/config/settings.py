@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
     embedding_concurrency: int = Field(default=5, alias="EMBEDDING_CONCURRENCY")
     document_parser: str = Field(default="pymupdf", alias="DOCUMENT_PARSER")
+    docling_do_ocr: bool = Field(default=False, alias="DOCLING_DO_OCR")
+    docling_do_formula_enrichment: bool = Field(default=False, alias="DOCLING_DO_FORMULA_ENRICHMENT")
     chunk_size: int = Field(default=1000, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=150, alias="CHUNK_OVERLAP")
     top_k: int = Field(default=5, alias="TOP_K")
