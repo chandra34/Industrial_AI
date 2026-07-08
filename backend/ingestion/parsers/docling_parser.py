@@ -1,6 +1,6 @@
 from io import BytesIO
 from docling.datamodel.base_models import DocumentStream, InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 
@@ -15,9 +15,13 @@ class DoclingParser(BaseParser):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         
-        # Configure Docling pipeline options to disable OCR
+        # Configure Docling pipeline options dynamically from settings
         pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = False
+        pipeline_options.do_ocr = self.settings.docling_do_ocr
+        if pipeline_options.do_ocr:
+            pipeline_options.ocr_options = EasyOcrOptions()
+            
+        pipeline_options.do_formula_enrichment = self.settings.docling_do_formula_enrichment
         
         self.converter = DocumentConverter(
             format_options={
