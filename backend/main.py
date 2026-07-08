@@ -141,6 +141,34 @@ def retry_initialization(func, description: str, retries: int = 5, delay: float 
             current_delay *= 2
 
 
+async def retry_initialization_async(func, description: str, retries: int = 5, delay: float = 2.0):
+    """Retry an async startup connection or initialization function with exponential backoff."""
+    import asyncio
+    current_delay = delay
+    for attempt in range(1, retries + 1):
+        try:
+            return await func()
+        except Exception as exc:
+            if attempt == retries:
+                logger.error(
+                    "Startup critical initialization failed for %s after %d attempts: %s. Halting.",
+                    description,
+                    attempt,
+                    exc,
+                )
+                raise
+            logger.warning(
+                "Failed to initialize %s (attempt %d/%d). Error: %s. Retrying in %.1f seconds...",
+                description,
+                attempt,
+                retries,
+                exc,
+                current_delay,
+            )
+            await asyncio.sleep(current_delay)
+            current_delay *= 2
+
+
 @app.on_event("startup")
 async def on_startup() -> None:
     """Initialize Firebase, services, and attach them to application state."""
@@ -153,10 +181,11 @@ async def on_startup() -> None:
     from backend.database.session import engine
     from backend.database.models import Base
     
-    def init_db():
-        Base.metadata.create_all(bind=engine)
+    async def init_db():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
         
-    retry_initialization(init_db, "Metadata database tables")
+    await retry_initialization_async(init_db, "Metadata database tables")
     logger.info("Metadata database tables initialized")
 
     # Initialize Firebase Admin SDK

@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from redis import Redis
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config.settings import get_settings
 from backend.schemas.health import HealthResponse
@@ -36,7 +36,7 @@ async def liveness() -> dict:
 async def readiness(
     response: Response,
     request: Request,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Deep readiness check to verify connections to sqlite, redis, and milvus."""
     status_details = {}
@@ -45,7 +45,7 @@ async def readiness(
     # 1. Check Database (SQLAlchemy / SQLite)
     try:
         from sqlalchemy import text
-        db.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
         status_details["database"] = "ok"
     except Exception as e:
         logger.error("Readiness check: database failed: %s", e)

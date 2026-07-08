@@ -1,7 +1,8 @@
 import logging
 from pathlib import Path
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from backend.config.settings import Settings
 from backend.database.models import Document
@@ -33,9 +34,10 @@ class DocumentService:
         self.vector_store = vector_store
         self.upload_dir = settings.resolved_upload_dir
 
-    async def list_user_documents(self, db: Session, user_id: str) -> list[dict]:
+    async def list_user_documents(self, db: AsyncSession, user_id: str) -> list[dict]:
         """List all indexed documents for a specific user from the metadata database."""
-        docs = db.query(Document).filter_by(user_id=user_id).all()
+        result = await db.execute(select(Document).filter(Document.user_id == user_id))
+        docs = result.scalars().all()
         return [
             {
                 "document_id": doc.id,
@@ -51,9 +53,12 @@ class DocumentService:
             for doc in docs
         ]
 
-    async def delete_user_document(self, db: Session, document_id: str, user_id: str) -> str:
+    async def delete_user_document(self, db: AsyncSession, document_id: str, user_id: str) -> str:
         """Verify ownership and delete document vectors, metadata row, and physical file."""
-        doc = db.query(Document).filter_by(id=document_id, user_id=user_id).first()
+        result = await db.execute(
+            select(Document).filter(Document.id == document_id, Document.user_id == user_id)
+        )
+        doc = result.scalars().first()
         if not doc:
             raise DocumentNotFoundError("Document not found or access denied")
 
@@ -72,17 +77,20 @@ class DocumentService:
                 logger.warning("Could not delete file %s from disk: %s", exact_file_path, e)
 
         # Delete metadata row from database
-        db.delete(doc)
-        db.commit()
+        await db.delete(doc)
+        await db.commit()
 
         message = f"Successfully deleted document {document_id}"
         if not deleted_file:
             message += " (no raw file found on disk)"
         return message
 
-    async def get_download_path(self, db: Session, document_id: str, user_id: str) -> tuple[Path, str]:
+    async def get_download_path(self, db: AsyncSession, document_id: str, user_id: str) -> tuple[Path, str]:
         """Verify ownership and retrieve the physical path and pretty name for downloading."""
-        doc = db.query(Document).filter_by(id=document_id, user_id=user_id).first()
+        result = await db.execute(
+            select(Document).filter(Document.id == document_id, Document.user_id == user_id)
+        )
+        doc = result.scalars().first()
         if not doc:
             raise DocumentNotFoundError("Document not found or access denied")
 
