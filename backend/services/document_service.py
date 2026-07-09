@@ -1,11 +1,11 @@
 import logging
-from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from backend.config.settings import Settings
 from backend.database.models import Document
+from backend.services.storage import BaseStorageProvider
 from backend.vectordb.milvus_db import MilvusStore
 
 logger = logging.getLogger(__name__)
@@ -29,10 +29,10 @@ class DocumentFileNotFoundError(DocumentServiceError):
 class DocumentService:
     """Service to handle document operations: listing, deleting, and fetching download paths."""
 
-    def __init__(self, settings: Settings, vector_store: MilvusStore) -> None:
+    def __init__(self, settings: Settings, vector_store: MilvusStore, storage_provider: BaseStorageProvider) -> None:
         self.settings = settings
         self.vector_store = vector_store
-        self.upload_dir = settings.resolved_upload_dir
+        self.storage_provider = storage_provider
 
     async def list_user_documents(self, db: AsyncSession, user_id: str) -> list[dict]:
         """List all indexed documents for a specific user from the metadata database."""
@@ -54,7 +54,7 @@ class DocumentService:
         ]
 
     async def delete_user_document(self, db: AsyncSession, document_id: str, user_id: str) -> str:
-        """Verify ownership and delete document vectors, metadata row, and physical file."""
+        """Verify ownership and delete document vectors, metadata row, and stored file."""
         result = await db.execute(
             select(Document).filter(Document.id == document_id, Document.user_id == user_id)
         )
@@ -65,16 +65,13 @@ class DocumentService:
         # Delete vectors from Milvus
         await self.vector_store.delete_document(document_id, user_id)
 
-        # Delete raw file from local storage
-        deleted_file = False
-        exact_file_path = self.upload_dir / f"{document_id}_{doc.filename}"
-        if exact_file_path.exists():
-            try:
-                exact_file_path.unlink()
-                deleted_file = True
-                logger.info("Deleted raw PDF file: %s", exact_file_path)
-            except Exception as e:
-                logger.warning("Could not delete file %s from disk: %s", exact_file_path, e)
+        # Delete raw file via Storage Provider
+        file_key = f"{document_id}_{doc.filename}"
+        deleted_file = await self.storage_provider.delete_file(file_key)
+        if deleted_file:
+            logger.info("Deleted raw file: %s", file_key)
+        else:
+            logger.warning("Raw file not found for deletion: %s", file_key)
 
         # Delete metadata row from database
         await db.delete(doc)
@@ -82,11 +79,11 @@ class DocumentService:
 
         message = f"Successfully deleted document {document_id}"
         if not deleted_file:
-            message += " (no raw file found on disk)"
+            message += " (no raw file found in storage)"
         return message
 
-    async def get_download_path(self, db: AsyncSession, document_id: str, user_id: str) -> tuple[Path, str]:
-        """Verify ownership and retrieve the physical path and pretty name for downloading."""
+    async def get_download_source(self, db: AsyncSession, document_id: str, user_id: str) -> dict:
+        """Verify ownership and retrieve a presigned URL or raw bytes for downloading."""
         result = await db.execute(
             select(Document).filter(Document.id == document_id, Document.user_id == user_id)
         )
@@ -94,11 +91,13 @@ class DocumentService:
         if not doc:
             raise DocumentNotFoundError("Document not found or access denied")
 
-        if not self.upload_dir.exists():
-            raise DocumentFileNotFoundError("Uploads directory does not exist")
+        file_key = f"{document_id}_{doc.filename}"
 
-        target_file = self.upload_dir / f"{document_id}_{doc.filename}"
-        if not target_file.exists():
-            raise DocumentFileNotFoundError("Document file not found on disk")
+        # Try to generate a secure presigned redirect URL (best for S3/GCS)
+        url = await self.storage_provider.get_download_url(file_key, doc.filename)
+        if url:
+            return {"type": "url", "url": url, "filename": doc.filename}
 
-        return target_file, doc.filename
+        # Fallback: stream raw bytes (local storage or providers without presigned URLs)
+        file_bytes = await self.storage_provider.download_file(file_key)
+        return {"type": "bytes", "bytes": file_bytes, "filename": doc.filename}

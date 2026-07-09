@@ -10,6 +10,7 @@ from backend.database.models import Document
 from backend.rag.embeddings import EmbeddingProvider
 from backend.rag.llm import LLMProvider
 from backend.ingestion.pipeline import get_parser
+from backend.services.storage import BaseStorageProvider
 from backend.vectordb.milvus_db import MilvusStore
 from fastapi.concurrency import run_in_threadpool
 
@@ -44,19 +45,19 @@ class IngestService:
         vector_store: MilvusStore,
         embedding_service: EmbeddingProvider,
         llm_service: LLMProvider,
+        storage_provider: BaseStorageProvider,
     ) -> None:
         self.settings = settings
         self.vector_store = vector_store
         self.embedding_service = embedding_service
         self.llm_service = llm_service
-        self.upload_dir = settings.resolved_upload_dir
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.storage_provider = storage_provider
 
-    def _save_upload(self, file_bytes: bytes, original_name: str) -> tuple[Path, str]:
+    async def _save_upload(self, file_bytes: bytes, original_name: str) -> tuple[str, str]:
         safe_name = Path(original_name).name or "document.pdf"
         document_id = uuid4().hex
-        stored_path = self.upload_dir / f"{document_id}_{safe_name}"
-        stored_path.write_bytes(file_bytes)
+        file_key = f"{document_id}_{safe_name}"
+        stored_path = await self.storage_provider.upload_file(file_bytes, file_key)
         return stored_path, document_id
 
     async def _extract_metadata_via_llm(self, doc_text_sample: str) -> dict:
@@ -113,7 +114,7 @@ class IngestService:
             if not file_bytes:
                 raise ValueError("Uploaded file is empty")
 
-            stored_path, document_id = self._save_upload(file_bytes, original_name)
+            stored_path, document_id = await self._save_upload(file_bytes, original_name)
             document_id_var.set(document_id)
             
             logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
@@ -122,11 +123,12 @@ class IngestService:
             start_parse_chunk = time.perf_counter()
             try:
                 parser = get_parser(self.settings)
+                file_key = f"{document_id}_{Path(original_name).name or 'document.pdf'}"
                 chunks = await run_in_threadpool(
                     parser.parse,
                     file_bytes,
                     document_id=document_id,
-                    source_filename=stored_path.name,
+                    source_filename=file_key,
                 )
             except Exception as parse_err:
                 logger.exception("Upload flow: Failed to parse and chunk uploaded PDF %s", original_name)
@@ -243,12 +245,13 @@ class IngestService:
                 except Exception as e:
                     logger.warning("Could not delete orphaned vectors for document %s from Milvus: %s", document_id, e)
 
-            # Clean up the orphaned file on disk since ingestion failed
-            if stored_path is not None and stored_path.exists():
+            # Clean up the orphaned file since ingestion failed
+            if document_id is not None:
                 try:
-                    stored_path.unlink()
-                    logger.info("Cleaned up orphaned file from disk due to ingestion failure: %s", stored_path)
+                    file_key = f"{document_id}_{Path(original_name).name or 'document.pdf'}"
+                    await self.storage_provider.delete_file(file_key)
+                    logger.info("Cleaned up orphaned file due to ingestion failure: %s", file_key)
                 except Exception as e:
-                    logger.warning("Could not delete orphaned file %s: %s", stored_path, e)
+                    logger.warning("Could not delete orphaned file: %s", e)
             raise
 

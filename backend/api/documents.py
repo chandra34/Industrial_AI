@@ -1,7 +1,8 @@
 import logging
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.schemas.documents import DocumentListResponse, DeleteResponse, DocumentItem
@@ -10,7 +11,6 @@ from backend.api.dependencies import get_document_service, get_db
 from backend.services.document_service import (
     DocumentService,
     DocumentNotFoundError,
-    DocumentFileNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,22 +73,24 @@ async def download_document(
     current_user: FirebaseUser = Depends(get_current_user),
     document_service: DocumentService = Depends(get_document_service),
     db: AsyncSession = Depends(get_db),
-) -> FileResponse:
+):
     """Download the original PDF file for an owned document."""
     from backend.utils.logging_context import document_id_var
     document_id_var.set(document_id)
 
     try:
-        file_path, filename = await document_service.get_download_path(db, document_id, current_user.uid)
-        return FileResponse(
-            path=file_path,
-            filename=filename,
-            media_type="application/pdf"
+        source = await document_service.get_download_source(db, document_id, current_user.uid)
+        if source["type"] == "url":
+            # 307 Temporary Redirect: offloads the transfer to S3/GCS directly
+            return RedirectResponse(url=source["url"], status_code=307)
+        # Fallback: stream raw bytes (local storage)
+        return StreamingResponse(
+            BytesIO(source["bytes"]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{source["filename"]}"'},
         )
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    except DocumentFileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         logger.exception("Failed to download document %s", document_id)
-        raise HTTPException(status_code=500, detail="Failed to authorize or locate document download path.") from exc
+        raise HTTPException(status_code=500, detail="Failed to download document.") from exc

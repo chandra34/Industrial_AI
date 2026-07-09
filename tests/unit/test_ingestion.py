@@ -4,6 +4,7 @@ from pathlib import Path
 
 from backend.config.settings import get_settings
 from backend.services.ingest_service import IngestService, IngestionResult
+from backend.services.storage import LocalStorageProvider
 from backend.database.models import Document
 from sqlalchemy.future import select
 from tests.mock_providers import MockEmbeddingProvider, MockLLMProvider, MockMilvusStore
@@ -14,7 +15,8 @@ def ingest_service():
     vector_store = MockMilvusStore(settings)
     embedding_service = MockEmbeddingProvider(settings)
     llm_service = MockLLMProvider(settings)
-    return IngestService(settings, vector_store, embedding_service, llm_service)
+    storage_provider = LocalStorageProvider(settings)
+    return IngestService(settings, vector_store, embedding_service, llm_service, storage_provider)
 
 @pytest.mark.asyncio
 async def test_ingest_pdf_success(ingest_service, db_session):
