@@ -3,6 +3,7 @@ import logging
 from backend.config.settings import get_settings
 from backend.services.ingest_service import IngestService
 from backend.services.job_status_service import JobStatusService
+from backend.services.storage import create_storage_provider
 from backend.rag.embeddings import EmbeddingFactory
 from backend.vectordb.milvus_db import MilvusStore
 from backend.database.session import AsyncSessionLocal
@@ -32,7 +33,8 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
     embedding_service = EmbeddingFactory.create(settings)
     vector_store = MilvusStore(settings)
     llm_service = LLMFactory.create(settings)
-    ingest_service = IngestService(settings, vector_store, embedding_service, llm_service)
+    storage_provider = create_storage_provider(settings)
+    ingest_service = IngestService(settings, vector_store, embedding_service, llm_service, storage_provider)
     job_status_service = JobStatusService()
     
     # Decode the base64 payload to binary bytes for parsing

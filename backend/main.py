@@ -21,6 +21,7 @@ from backend.services.ingest_service import IngestService
 from backend.services.reranker_service import RerankerService
 from backend.services.document_service import DocumentService
 from backend.services.job_status_service import JobStatusService
+from backend.services.storage import create_storage_provider
 from backend.vectordb.milvus_db import MilvusStore
 from backend.utils.logging_context import CorrelationFilter, request_id_var, route_var, clear_context
 
@@ -219,6 +220,10 @@ async def on_startup() -> None:
     vector_store = retry_initialization(init_milvus, "Milvus Store")
     llm_service = LLMFactory.create(settings)
 
+    # Initialize storage provider (local / s3 / gcs)
+    storage_provider = create_storage_provider(settings)
+    logger.info("Storage provider initialized: %s", settings.storage_provider)
+
     # BM25 sparse search is handled natively by Milvus (schema + SPARSE_INVERTED_INDEX)
     if settings.bm25_enabled:
         logger.info("BM25 sparse search enabled (Milvus native)")
@@ -235,10 +240,11 @@ async def on_startup() -> None:
 
     retrieval_service = RetrievalService(settings, vector_store, embedding_service, reranker_service, llm_service)
 
+    app.state.storage_provider = storage_provider
     app.state.vector_store = vector_store
     app.state.reranker_service = reranker_service
-    app.state.ingest_service = IngestService(settings, vector_store, embedding_service, llm_service)
-    app.state.document_service = DocumentService(settings, vector_store)
+    app.state.ingest_service = IngestService(settings, vector_store, embedding_service, llm_service, storage_provider)
+    app.state.document_service = DocumentService(settings, vector_store, storage_provider)
     app.state.job_status_service = JobStatusService()
     app.state.rag_pipeline = RAGPipeline(settings, retrieval_service, llm_service)
 

@@ -81,6 +81,14 @@ class Settings(BaseSettings):
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
 
+    # Storage Provider Configuration
+    storage_provider: str = Field(default="local", alias="STORAGE_PROVIDER")
+    aws_access_key_id: str | None = Field(default=None, alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = Field(default=None, alias="AWS_SECRET_ACCESS_KEY")
+    aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
+    s3_bucket_name: str | None = Field(default=None, alias="S3_BUCKET_NAME")
+    gcs_bucket_name: str | None = Field(default=None, alias="GCS_BUCKET_NAME")
+
     @property
     def resolved_milvus_uri(self) -> str:
         """Absolute Milvus URI: .db file for Lite, or http(s) for a remote server."""
