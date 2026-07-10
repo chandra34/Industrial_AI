@@ -22,8 +22,6 @@ class Document(Base):
     document_type = Column(String, nullable=True, doc="Type of document (e.g. OEM Manual, SOP, LOTO)")
     manufacturer = Column(String, nullable=True, doc="Equipment manufacturer name")
     equipment = Column(String, nullable=True, doc="Equipment name or model")
-    revision = Column(String, nullable=True, doc="Document version or revision")
-    language = Column(String, nullable=True, doc="Language of the document")
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 

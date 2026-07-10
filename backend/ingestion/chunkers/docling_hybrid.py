@@ -30,8 +30,6 @@ class DoclingHybridChunker:
         doc_type = meta.get("document_type")
         mfr = meta.get("manufacturer")
         equip = meta.get("equipment")
-        rev = meta.get("revision")
-        lang = meta.get("language")
 
         docling_chunks = self.chunker.chunk(doc)
         for dl_chunk in docling_chunks:
@@ -69,9 +67,6 @@ class DoclingHybridChunker:
                     manufacturer=mfr,
                     equipment=equip,
                     section=section_name,
-                    revision=rev,
-                    language=lang,
-                    paragraph="",
                 )
             )
             running_index += 1

@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { reviewPermit } from '../api/client';
 import './SafetyReviewDashboard.css';
 
-const SAMPLE_PERMIT = `Task: Startup of positive displacement pump for lime dosing system
 
-Steps:
-1. Check that pump motor is available and free to run.
-2. Open suction valve from lime tank.
-3. Start pump from local push button.
-4. Check for abnormal noise or vibration.
-5. Record pump operating parameters.`;
 
 /**
  * Determines the CSS class suffix for a given audit status string.
@@ -47,12 +40,14 @@ export default function SafetyReviewDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
+  const [expandedFindings, setExpandedFindings] = useState({});
 
   async function handleAudit() {
     if (!permitText.trim()) return;
     setIsLoading(true);
     setReport(null);
     setError(null);
+    setExpandedFindings({});
 
     try {
       const result = await reviewPermit(
@@ -68,12 +63,11 @@ export default function SafetyReviewDashboard() {
     }
   }
 
-  function handleLoadSample() {
-    setPermitText(SAMPLE_PERMIT);
-    setEquipment('positive displacement pump');
-    setManufacturer('');
-    setReport(null);
-    setError(null);
+  function toggleFindingExpansion(idx) {
+    setExpandedFindings(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
   }
 
   return (
@@ -117,9 +111,6 @@ export default function SafetyReviewDashboard() {
           </div>
 
           <div className="review-actions">
-            <button className="btn-sample" onClick={handleLoadSample} type="button">
-              Load Sample
-            </button>
             <button
               className="btn-audit"
               onClick={handleAudit}
@@ -187,6 +178,15 @@ export default function SafetyReviewDashboard() {
               </div>
             </div>
 
+            {/* Audit Meta Summary */}
+            {(equipment.trim() || manufacturer.trim()) && (
+              <div className="audit-meta-summary">
+                <span className="meta-label">Audit Criteria:</span>
+                {equipment.trim() && <span className="meta-badge equipment">Equipment: {equipment.trim()}</span>}
+                {manufacturer.trim() && <span className="meta-badge manufacturer">Manufacturer: {manufacturer.trim()}</span>}
+              </div>
+            )}
+
             {/* Findings */}
             {report.findings && report.findings.length > 0 ? (
               <>
@@ -213,10 +213,55 @@ export default function SafetyReviewDashboard() {
                       <p>{finding.recommendation}</p>
                     </div>
 
-                    {finding.reference_source && (
-                      <span className="finding-ref">
-                        📄 {finding.reference_source}
-                      </span>
+                    {(finding.citation_source || finding.reference_source) && (
+                      <div className="finding-citation-container">
+                        <div className="citation-header-row">
+                          <span className="citation-source-label">Source Context:</span>
+                          <div className="citation-meta-pills">
+                            {finding.citation_source ? (
+                              <>
+                                <span className="citation-pill source-file" title={finding.citation_source}>
+                                  📄 {finding.citation_source}
+                                </span>
+                                {finding.citation_page !== null && finding.citation_page !== undefined && (
+                                  <span className="citation-pill page-num">
+                                    Page {finding.citation_page}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="citation-pill legacy-source" title={finding.reference_source}>
+                                📄 {finding.reference_source}
+                              </span>
+                            )}
+                          </div>
+
+                          {finding.citation_chunk_text && (
+                            <button
+                              type="button"
+                              className={`btn-view-evidence ${expandedFindings[idx] ? 'expanded' : ''}`}
+                              onClick={() => toggleFindingExpansion(idx)}
+                            >
+                              <span>{expandedFindings[idx] ? 'Hide Context' : 'View Context'}</span>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="chevron-icon">
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+
+                        {finding.citation_chunk_text && expandedFindings[idx] && (
+                          <div className="citation-evidence-box">
+                            <div className="evidence-quote-bar" />
+                            <div className="evidence-content">
+                              <p className="evidence-text">"{finding.citation_chunk_text}"</p>
+                              {finding.citation_chunk_index !== null && finding.citation_chunk_index !== undefined && (
+                                <span className="evidence-chunk-id">Chunk: {finding.citation_chunk_index}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}

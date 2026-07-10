@@ -85,7 +85,8 @@ async def test_pipeline_review_permit(pipeline_setup):
         '{"status": "Needs Review", "summary": "LOTO steps missing discharge valve isolation.", '
         '"findings": [{"severity": "High", "finding_type": "Missing Lockout/Isolation", '
         '"description": "Discharge valve LOTO missing.", "recommendation": "Isolate discharge valve.", '
-        '"reference_source": "sop_loto.pdf page 5"}]}'
+        '"reference_source": "doc-2_sop_loto.pdf page 5", "citation_source": "doc-2_sop_loto.pdf", '
+        '"citation_page": 5, "citation_chunk_index": 3, "citation_chunk_text": null}]}'
     )
     async def mock_generate_structured_output(*args, **kwargs):
         return mock_report_json
@@ -104,6 +105,10 @@ async def test_pipeline_review_permit(pipeline_setup):
     assert len(report.findings) == 1
     assert report.findings[0].severity == "High"
     assert report.findings[0].finding_type == "Missing Lockout/Isolation"
+    assert report.findings[0].citation_source == "sop_loto.pdf"  # cleaned filename
+    assert report.findings[0].citation_page == 5
+    assert report.findings[0].citation_chunk_index == 3
+    assert report.findings[0].citation_chunk_text == "Isolate discharge valve before line open."
     
     retrieval_service.search.assert_called_once()
     called_kwargs = retrieval_service.search.call_args[1]

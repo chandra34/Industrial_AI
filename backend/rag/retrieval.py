@@ -25,9 +25,6 @@ class RetrievedChunk:
     manufacturer: str = ""
     equipment: str = ""
     section: str = ""
-    revision: str = ""
-    language: str = ""
-    paragraph: str = ""
 
 
 class RetrievalService:
@@ -79,7 +76,6 @@ class RetrievalService:
             content = await self.llm_service.generate_structured_output(
                 messages=messages,
                 response_model=QueryIntent,
-                model="openai/gpt-oss-120b",
                 temperature=0.0
             )
             intent_dict = json.loads(content)
@@ -229,7 +225,4 @@ def _hit_to_chunk(hit: VectorSearchHit) -> RetrievedChunk:
         manufacturer=hit.manufacturer,
         equipment=hit.equipment,
         section=hit.section,
-        revision=hit.revision,
-        language=hit.language,
-        paragraph=hit.paragraph,
     )

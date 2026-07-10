@@ -47,8 +47,6 @@ class DocumentService:
                 "document_type": doc.document_type,
                 "manufacturer": doc.manufacturer,
                 "equipment": doc.equipment,
-                "revision": doc.revision,
-                "language": doc.language,
             }
             for doc in docs
         ]

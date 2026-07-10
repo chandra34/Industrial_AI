@@ -58,8 +58,6 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
                 document_type=result.document_type,
                 manufacturer=result.manufacturer,
                 equipment=result.equipment,
-                revision=result.revision,
-                language=result.language,
             )
             await job_status_service.update_status(db, job_id, "completed", result=upload_response)
             logger.info("Background ingestion task completed successfully for job: %s", job_id)

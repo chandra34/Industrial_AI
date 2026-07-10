@@ -12,8 +12,6 @@ class UploadResponse(BaseModel):
     document_type: str | None = None
     manufacturer: str | None = None
     equipment: str | None = None
-    revision: str | None = None
-    language: str | None = None
 
 
 class DocumentItem(BaseModel):
@@ -24,8 +22,6 @@ class DocumentItem(BaseModel):
     document_type: str | None = None
     manufacturer: str | None = None
     equipment: str | None = None
-    revision: str | None = None
-    language: str | None = None
 
 
 class DocumentListResponse(BaseModel):

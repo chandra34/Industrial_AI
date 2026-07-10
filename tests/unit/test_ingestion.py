@@ -27,9 +27,7 @@ async def test_ingest_pdf_success(ingest_service, db_session):
     metadata = {
         "document_type": "OEM Manual",
         "manufacturer": "Siemens",
-        "equipment": "Centrifugal Pump",
-        "revision": "Rev A",
-        "language": "English"
+        "equipment": "Centrifugal Pump"
     }
 
     result = await ingest_service.ingest_pdf(
@@ -78,18 +76,14 @@ async def test_ingest_pdf_metadata_fallback(ingest_service, db_session):
     metadata = {
         "document_type": "Unknown",
         "manufacturer": "Unknown",
-        "equipment": "Unknown",
-        "revision": "Unknown",
-        "language": "English"
+        "equipment": "Unknown"
     }
 
     # Configure our MockLLMProvider to return specific structured outputs
     ingest_service.llm_service.structured_response = {
         "document_type": "SOP",
         "manufacturer": "Siemens",
-        "equipment": "Gas Turbine",
-        "revision": "V2.1",
-        "language": "English"
+        "equipment": "Gas Turbine"
     }
 
     # Ensure GROQ_API_KEY is considered configured in settings for LLM fallback
@@ -106,7 +100,6 @@ async def test_ingest_pdf_metadata_fallback(ingest_service, db_session):
     assert result.document_type == "SOP"
     assert result.manufacturer == "siemens"
     assert result.equipment == "gas turbine"
-    assert result.revision == "V2.1"
 
     # Cleanup test upload
     stored_file = Path(result.stored_path)

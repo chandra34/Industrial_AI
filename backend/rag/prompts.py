@@ -53,9 +53,13 @@ Analyze the permit steps for any:
 For each issue identified, create a safety finding containing:
 - severity: 'Low', 'Medium', 'High', or 'Critical'
 - finding_type: 'Missing Lockout/Isolation', 'Incorrect PPE', 'Procedural Deviation', 'Hazard Warning', or 'Other'
-- description: Detailed explanation of the safety gap
+- description: Detailed explanation of the safety finding or gap
 - recommendation: Actionable corrective action
 - reference_source: The filename and page/section number from the context documents where this safety rule is described
+- citation_source: The exact 'source' attribute from the <document> XML tag containing the safety rule (e.g. 'safety_manual.pdf')
+- citation_page: The exact integer 'page' attribute from the <document> XML tag containing the safety rule
+- citation_chunk_index: The exact integer 'chunk' attribute from the <document> XML tag containing the safety rule
+- citation_chunk_text: Leave this empty or null (it will be populated automatically by the system)
 
 If no safety gaps or hazards are found, output status 'Safe'. If any medium or high gaps are found, output status 'Needs Review'. If any critical gaps are found, output status 'Unsafe'.
 

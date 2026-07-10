@@ -58,9 +58,7 @@ class MockLLMProvider(LLMProvider):
             return json.dumps({
                 "document_type": "Unknown",
                 "manufacturer": "unknown",
-                "equipment": "unknown",
-                "revision": "Unknown",
-                "language": "English"
+                "equipment": "unknown"
             })
             
         return "{}"
