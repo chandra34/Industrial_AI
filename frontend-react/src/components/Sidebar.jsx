@@ -8,9 +8,11 @@ import styles from './Sidebar.module.css';
  * @param {Object} props - Component props.
  * @param {'chat'|'documents'|'settings'} props.activeView - Currently active application view.
  * @param {function('chat'|'documents'|'settings'): void} props.onViewChange - Handler to navigate to a new view.
+ * @param {boolean} props.isDarkMode - Whether dark mode is currently active.
+ * @param {function(): void} props.onToggleDarkMode - Handler to toggle between dark and light mode.
  * @returns {React.JSX.Element} The rendered navigation sidebar.
  */
-export default function Sidebar({ activeView, onViewChange }) {
+export default function Sidebar({ activeView, onViewChange, isDarkMode, onToggleDarkMode }) {
 
   return (
     <aside className={styles.sidebar}>
@@ -67,6 +69,34 @@ export default function Sidebar({ activeView, onViewChange }) {
           </svg>
         </button>
       </nav>
+
+      {/* Theme toggle button pinned to bottom */}
+      <button
+        className={styles.themeToggle}
+        onClick={onToggleDarkMode}
+        title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        aria-label="Toggle theme"
+      >
+        {isDarkMode ? (
+          /* Sun icon — shown in dark mode, click to go light */
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+        ) : (
+          /* Moon icon — shown in light mode, click to go dark */
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        )}
+      </button>
     </aside>
   );
 }

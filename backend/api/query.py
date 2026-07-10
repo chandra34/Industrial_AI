@@ -47,9 +47,6 @@ async def query_documents(
                 manufacturer=chunk.manufacturer,
                 equipment=chunk.equipment,
                 section=chunk.section,
-                revision=chunk.revision,
-                language=chunk.language,
-                paragraph=chunk.paragraph,
             )
             for chunk in result.sources
         ],

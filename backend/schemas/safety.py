@@ -9,6 +9,10 @@ class SafetyFinding(BaseModel):
     description: str = Field(description="Detailed explanation of the safety finding or gap")
     recommendation: str = Field(description="Actionable corrective recommendation to mitigate the risk")
     reference_source: str = Field(description="Source document or SOP reference, or empty string if not applicable")
+    citation_source: str | None = Field(description="The filename of the source document from the context tags (exact string or empty)")
+    citation_page: int | None = Field(description="The page number of the source document from the context tags (or None)")
+    citation_chunk_index: int | None = Field(description="The chunk index from the context tags (or None)")
+    citation_chunk_text: str | None = Field(description="The exact text of the matched chunk from the database (leave empty, populated by backend)")
 
 
 class SafetyReviewReport(BaseModel):

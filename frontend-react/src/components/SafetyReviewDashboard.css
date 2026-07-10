@@ -1,7 +1,7 @@
 /* ===== Safety Review Dashboard ===== */
 .review-dashboard {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
   padding: 24px;
   height: 100%;
@@ -13,6 +13,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -37,11 +38,16 @@
   border: 1px solid var(--border-light);
   box-shadow: var(--bot-bubble-shadow);
   padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .permit-textarea {
   width: 100%;
-  min-height: 220px;
+  flex: 1;
+  min-height: 200px;
   padding: 14px;
   border: 1.5px solid var(--border-light);
   border-radius: var(--radius-sm);
@@ -49,7 +55,7 @@
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-primary);
-  resize: vertical;
+  resize: none;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -393,4 +399,189 @@
   padding: 24px;
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+/* ===== Audit Metadata Summary ===== */
+.audit-meta-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.meta-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+.meta-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.meta-badge.equipment {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.meta-badge.manufacturer {
+  background: #fae8ff;
+  color: #a21caf;
+}
+
+/* ===== Interactive Citation Box ===== */
+.finding-citation-container {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.citation-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.citation-source-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+}
+
+.citation-meta-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.citation-pill {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.citation-pill.source-file {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.citation-pill.page-num {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.citation-pill.legacy-source {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+/* View Context Button */
+.btn-view-evidence {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-view-evidence:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.btn-view-evidence .chevron-icon {
+  transition: transform 0.2s ease;
+}
+
+.btn-view-evidence.expanded .chevron-icon {
+  transform: transform rotate(180deg);
+}
+
+.btn-view-evidence.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+
+/* Collapsible Evidence Container */
+.citation-evidence-box {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  animation: slide-down 0.25s ease-out;
+}
+
+.evidence-quote-bar {
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.evidence-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.evidence-text {
+  font-style: italic;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #334155;
+  margin: 0;
+}
+
+.evidence-chunk-id {
+  font-size: 10px;
+  font-weight: 550;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

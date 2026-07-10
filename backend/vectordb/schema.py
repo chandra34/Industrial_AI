@@ -89,7 +89,7 @@ def reconcile_collection_schema(
                 if user_id_field:
                     is_part_key = user_id_field.get("is_partition_key", False) if isinstance(user_id_field, dict) else getattr(user_id_field, "is_partition_key", False)
 
-                metadata_fields = ["document_type", "manufacturer", "equipment", "section", "revision", "language", "paragraph"]
+                metadata_fields = ["document_type", "manufacturer", "equipment", "section"]
                 has_metadata = all(f in field_names for f in metadata_fields)
 
                 needs_recreate = (not has_user_id or not is_part_key or not has_metadata)
@@ -167,9 +167,6 @@ def reconcile_collection_schema(
         schema.add_field("manufacturer", DataType.VARCHAR, max_length=64)
         schema.add_field("equipment", DataType.VARCHAR, max_length=64)
         schema.add_field("section", DataType.VARCHAR, max_length=512)
-        schema.add_field("revision", DataType.VARCHAR, max_length=64)
-        schema.add_field("language", DataType.VARCHAR, max_length=64)
-        schema.add_field("paragraph", DataType.VARCHAR, max_length=64)
         schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=settings.milvus_dimension)
 
         # Add sparse vector field and BM25 function if enabled

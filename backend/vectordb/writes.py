@@ -57,9 +57,6 @@ async def execute_insert_chunks(
                 "manufacturer": chunk.manufacturer or "",
                 "equipment": chunk.equipment or "",
                 "section": chunk.section or "",
-                "revision": chunk.revision or "",
-                "language": chunk.language or "",
-                "paragraph": chunk.paragraph or "",
             }
         )
 

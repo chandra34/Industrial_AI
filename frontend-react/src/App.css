@@ -101,3 +101,300 @@ button {
   background: none;
   font-size: inherit;
 }
+
+/* ================================================================
+   DARK THEME
+   All dark-mode overrides live here. No individual component CSS
+   files are modified — we use body.dark-theme ancestor selectors.
+   ================================================================ */
+
+body.dark-theme {
+  /* --- Core design tokens --- */
+  --sidebar-bg: #0d0f18;
+  --sidebar-icon: #6b6b8a;
+  --sidebar-icon-active: #e2e2f0;
+  --sidebar-accent: rgba(108, 99, 255, 0.25);
+
+  --header-bg: #111320;
+  --header-border: #1e2035;
+
+  --main-bg: linear-gradient(160deg, #0e1020 0%, #111328 40%, #14121e 100%);
+
+  --user-bubble-bg: rgba(108, 99, 255, 0.15);
+  --user-bubble-text: #d4d2f5;
+  --bot-bubble-bg: #181a2e;
+  --bot-bubble-text: #cdd0e0;
+  --bot-bubble-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+
+  --accent: #7c75ff;
+  --accent-hover: #6e66f0;
+  --success: #34d399;
+
+  --text-primary: #e4e4f0;
+  --text-secondary: #9295aa;
+  --text-muted: #6b6e82;
+
+  --border-light: #252840;
+  --border-light-rgb: 37, 40, 64;
+}
+
+/* --- Scrollbar --- */
+body.dark-theme ::-webkit-scrollbar-thumb {
+  background: #3a3d55;
+}
+
+/* --- Header --- */
+body.dark-theme .headerAvatar {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+body.dark-theme .headerLogoutBtn {
+  color: var(--accent);
+  border-color: var(--border-light);
+}
+body.dark-theme .headerLogoutBtn:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* --- Sidebar hover --- */
+body.dark-theme .sidebarBtn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+/* --- Chat bubbles --- */
+body.dark-theme .chat-message--user {
+  background: var(--user-bubble-bg);
+}
+body.dark-theme .chat-message--bot .chat-message-body {
+  background: var(--bot-bubble-bg);
+  box-shadow: var(--bot-bubble-shadow);
+}
+body.dark-theme .chat-message-avatar {
+  background: rgba(108, 99, 255, 0.15);
+  color: #a5a0ff;
+}
+body.dark-theme .chat-message--bot .chat-message-avatar {
+  background: rgba(59, 130, 246, 0.15);
+  color: #6daaff;
+}
+body.dark-theme .chat-message-source-detail {
+  background: #1a1c30;
+}
+
+/* --- Chat input --- */
+body.dark-theme .chat-input-form {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+body.dark-theme .chat-input-form:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124, 117, 255, 0.12);
+}
+body.dark-theme .chat-input-textarea {
+  color: var(--text-primary);
+}
+body.dark-theme .chat-input-icon-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+/* --- Safety Review Dashboard --- */
+body.dark-theme .review-card {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+body.dark-theme .permit-textarea {
+  background: #12132a;
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+body.dark-theme .filter-input {
+  background: #12132a;
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+body.dark-theme .finding-card {
+  background: #181a2e;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+body.dark-theme .status-banner.safe {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+body.dark-theme .status-banner.needs-review {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+body.dark-theme .status-banner.unsafe {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+body.dark-theme .audit-meta-summary {
+  background: #14162a;
+  border-color: var(--border-light);
+}
+body.dark-theme .type-badge {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+}
+body.dark-theme .finding-ref {
+  background: rgba(108, 99, 255, 0.15);
+}
+body.dark-theme .severity-badge.critical { background: rgba(239, 68, 68, 0.12); }
+body.dark-theme .severity-badge.high { background: rgba(249, 115, 22, 0.12); }
+body.dark-theme .severity-badge.medium { background: rgba(245, 158, 11, 0.12); }
+body.dark-theme .severity-badge.low { background: rgba(99, 102, 241, 0.12); }
+
+/* Citation pills */
+body.dark-theme .citation-pill.source-file {
+  background: rgba(29, 78, 216, 0.15);
+  color: #6daaff;
+}
+body.dark-theme .citation-pill.page-num {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+}
+body.dark-theme .citation-pill.legacy-source {
+  background: rgba(109, 40, 217, 0.15);
+  color: #b19dff;
+}
+body.dark-theme .citation-evidence-box {
+  background: #12132a;
+  border-color: #2a2d45;
+}
+body.dark-theme .evidence-text {
+  color: var(--text-secondary);
+}
+body.dark-theme .evidence-chunk-id {
+  color: var(--text-muted);
+}
+body.dark-theme .finding-citation-container {
+  border-top-color: #252840;
+}
+
+/* Status banner text in dark mode */
+body.dark-theme .status-info.safe h3 { color: #4ade80; }
+body.dark-theme .status-info.needs-review h3 { color: #fbbf24; }
+body.dark-theme .status-info.unsafe h3 { color: #f87171; }
+
+/* Meta badges */
+body.dark-theme .meta-badge.equipment {
+  background: rgba(3, 105, 161, 0.15);
+  color: #67c7ff;
+}
+body.dark-theme .meta-badge.manufacturer {
+  background: rgba(162, 28, 175, 0.15);
+  color: #e177eb;
+}
+
+/* --- Documents Panel --- */
+body.dark-theme .document-card {
+  background: #181a2e;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+body.dark-theme .document-card:hover {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+}
+body.dark-theme .document-card-icon {
+  background: rgba(108, 99, 255, 0.12);
+}
+body.dark-theme .document-action-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+body.dark-theme .document-action-btn--delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+/* --- Settings Panel --- */
+body.dark-theme [class*="settingsCard"] {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+body.dark-theme [class*="settingsValue"] {
+  background: rgba(108, 99, 255, 0.15);
+  color: #a5a0ff;
+}
+body.dark-theme [class*="settingsSlider"] {
+  background: #2a2d45;
+}
+
+/* --- Upload Modal --- */
+body.dark-theme .upload-modal {
+  background: #181a2e;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+body.dark-theme .upload-modal-header {
+  border-bottom-color: var(--border-light);
+}
+body.dark-theme .upload-modal-footer {
+  border-top-color: var(--border-light);
+}
+body.dark-theme .upload-modal-footer.success-state {
+  background: #14162a;
+}
+body.dark-theme .upload-cancel-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+body.dark-theme .upload-close-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+body.dark-theme .upload-dropdown-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+body.dark-theme .upload-another-btn {
+  background: #14162a;
+  border-color: var(--border-light);
+}
+body.dark-theme .upload-another-btn:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--text-muted);
+}
+body.dark-theme .pdf-card {
+  background: #14162a;
+  border-color: var(--border-light);
+}
+body.dark-theme .indexed-badge {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+}
+body.dark-theme .status-banner-content h5 { color: #4ade80; }
+body.dark-theme .status-banner-content p { color: #6ee7b7; }
+
+/* --- Login page --- */
+body.dark-theme [class*="loginContainer"] {
+  background: var(--main-bg);
+}
+body.dark-theme [class*="loginCard"] {
+  background: #181a2e;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3), 0 0 0 1px var(--border-light);
+}
+body.dark-theme [class*="formGroup"] input {
+  background: #12132a;
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+body.dark-theme [class*="formGroup"] input:disabled {
+  background: #14162a;
+}
+body.dark-theme [class*="btnGoogle"] {
+  background: #14162a;
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+body.dark-theme [class*="btnGoogle"]:hover:not(:disabled) {
+  background: rgba(255,255,255,0.05);
+}
+body.dark-theme [class*="loginError"] {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+/* --- Dark theme transition for smooth toggle --- */
+body, .app-content, .chat-input-form, .review-card, .permit-textarea,
+.filter-input, .finding-card, .document-card, .upload-modal,
+[class*="settingsCard"], [class*="loginCard"], [class*="loginContainer"] {
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}

@@ -17,9 +17,6 @@ class SourceChunkResponse(BaseModel):
     manufacturer: str | None = None
     equipment: str | None = None
     section: str | None = None
-    revision: str | None = None
-    language: str | None = None
-    paragraph: str | None = None
 
 
 class QueryResponse(BaseModel):

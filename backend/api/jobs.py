@@ -33,8 +33,6 @@ async def upload_pdf(
     document_type: str | None = Form(None),
     manufacturer: str | None = Form(None),
     equipment: str | None = Form(None),
-    revision: str | None = Form(None),
-    language: str | None = Form(None),
     current_user: FirebaseUser = Depends(get_current_user),
     job_status_service: JobStatusService = Depends(get_job_status_service),
     db: AsyncSession = Depends(get_db),
@@ -92,8 +90,6 @@ async def upload_pdf(
         "document_type": document_type,
         "manufacturer": manufacturer,
         "equipment": equipment,
-        "revision": revision,
-        "language": language,
     }
 
     task_queue.enqueue(

@@ -28,8 +28,6 @@ class RecursiveChunker:
         doc_type = meta.get("document_type")
         mfr = meta.get("manufacturer")
         equip = meta.get("equipment")
-        rev = meta.get("revision")
-        lang = meta.get("language")
 
         for page in pages:
             if not page.text.strip():
@@ -52,9 +50,6 @@ class RecursiveChunker:
                         manufacturer=mfr,
                         equipment=equip,
                         section="",
-                        revision=rev,
-                        language=lang,
-                        paragraph="",
                     )
                 )
                 running_index += 1

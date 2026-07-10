@@ -38,3 +38,24 @@
   background: var(--sidebar-accent);
   color: var(--sidebar-icon-active);
 }
+
+/* Theme toggle pinned to bottom */
+.themeToggle {
+  margin-top: auto;
+  margin-bottom: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sidebar-icon);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.themeToggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-icon-active);
+  transform: rotate(15deg);
+}

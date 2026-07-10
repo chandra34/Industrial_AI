@@ -35,8 +35,6 @@ async def list_documents(
                 document_type=doc.get("document_type"),
                 manufacturer=doc.get("manufacturer"),
                 equipment=doc.get("equipment"),
-                revision=doc.get("revision"),
-                language=doc.get("language"),
             )
             for doc in docs
         ]

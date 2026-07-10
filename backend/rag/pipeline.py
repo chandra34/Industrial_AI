@@ -82,13 +82,83 @@ class RAGPipeline:
         content = await self.llm_service.generate_structured_output(
             messages=messages,
             response_model=SafetyReviewReport,
-            model="openai/gpt-oss-120b",
             temperature=0.0
         )
         duration_llm = time.perf_counter() - start_llm
         logger.info("Query flow: safety review report generated | duration: %.3fs", duration_llm)
 
         # Parse the structured response into the Pydantic response model
-        return SafetyReviewReport.model_validate_json(content)
+        report = SafetyReviewReport.model_validate_json(content)
+
+        def _clean_filename(filename: str, doc_id: str) -> str:
+            if filename and doc_id and filename.startswith(f"{doc_id}_"):
+                return filename[len(doc_id) + 1 :]
+            return filename or "Unknown"
+
+        # Post-process findings to match them with retrieved source chunks and clean filenames
+        for finding in report.findings:
+            matched_chunk = None
+            if finding.citation_source:
+                # Find matching chunk
+                for chunk in sources:
+                    fname_match = (
+                        chunk.source_filename.lower() == finding.citation_source.lower()
+                        or chunk.source_filename.lower().endswith(finding.citation_source.lower())
+                        or finding.citation_source.lower().endswith(chunk.source_filename.lower())
+                    )
+                    page_match = (
+                        finding.citation_page is None 
+                        or chunk.page_number == finding.citation_page
+                    )
+                    chunk_match = (
+                        finding.citation_chunk_index is None 
+                        or chunk.chunk_index == finding.citation_chunk_index
+                    )
+                    if fname_match and page_match and chunk_match:
+                        matched_chunk = chunk
+                        break
+                
+                # Try matching by filename and page only if no exact match is found
+                if not matched_chunk:
+                    for chunk in sources:
+                        fname_match = (
+                            chunk.source_filename.lower() == finding.citation_source.lower()
+                            or chunk.source_filename.lower().endswith(finding.citation_source.lower())
+                            or finding.citation_source.lower().endswith(chunk.source_filename.lower())
+                        )
+                        page_match = (
+                            finding.citation_page is None 
+                            or chunk.page_number == finding.citation_page
+                        )
+                        if fname_match and page_match:
+                            matched_chunk = chunk
+                            break
+                            
+                # Fallback to filename-only match
+                if not matched_chunk:
+                    for chunk in sources:
+                        fname_match = (
+                            chunk.source_filename.lower() == finding.citation_source.lower()
+                            or chunk.source_filename.lower().endswith(finding.citation_source.lower())
+                            or finding.citation_source.lower().endswith(chunk.source_filename.lower())
+                        )
+                        if fname_match:
+                            matched_chunk = chunk
+                            break
+
+            if matched_chunk:
+                finding.citation_source = _clean_filename(matched_chunk.source_filename, matched_chunk.document_id)
+                finding.citation_page = matched_chunk.page_number
+                finding.citation_chunk_index = matched_chunk.chunk_index
+                finding.citation_chunk_text = matched_chunk.chunk_text
+            else:
+                # Fallback clean if citation_source was outputted by LLM but not matched
+                if finding.citation_source:
+                    parts = finding.citation_source.split('_', 1)
+                    if len(parts) > 1 and len(parts[0]) >= 32:
+                        finding.citation_source = parts[1]
+                finding.citation_chunk_text = None
+
+        return report
 
 

@@ -24,9 +24,6 @@ class VectorSearchHit:
     manufacturer: str = ""
     equipment: str = ""
     section: str = ""
-    revision: str = ""
-    language: str = ""
-    paragraph: str = ""
 
 
 _OUTPUT_FIELDS = [
@@ -39,9 +36,6 @@ _OUTPUT_FIELDS = [
     "manufacturer",
     "equipment",
     "section",
-    "revision",
-    "language",
-    "paragraph",
 ]
 
 
@@ -65,9 +59,6 @@ def parse_search_hit(hit: Any) -> VectorSearchHit:
         manufacturer=str(entity.get("manufacturer") or ""),
         equipment=str(entity.get("equipment") or ""),
         section=str(entity.get("section") or ""),
-        revision=str(entity.get("revision") or ""),
-        language=str(entity.get("language") or ""),
-        paragraph=str(entity.get("paragraph") or ""),
     )
 
 

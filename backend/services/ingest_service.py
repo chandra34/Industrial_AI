@@ -28,8 +28,6 @@ class IngestionResult:
     document_type: str | None = None
     manufacturer: str | None = None
     equipment: str | None = None
-    revision: str | None = None
-    language: str | None = None
 
 
 class IngestService:
@@ -71,8 +69,6 @@ class IngestService:
             document_type: str = Field(description="One of: 'OEM Manual', 'SOP', 'LOTO Procedure', 'Work Instruction', 'Safety Rules', or 'Unknown'")
             manufacturer: str = Field(description="Equipment manufacturer name, or 'Unknown'")
             equipment: str = Field(description="Specific equipment model or name, or 'Unknown'")
-            revision: str = Field(description="Document revision/version number, or 'Unknown'")
-            language: str = Field(description="Document language, or 'Unknown'")
 
         if not self.settings.groq_api_key:
             logger.warning("GROQ_API_KEY not configured; skipping LLM metadata extraction")
@@ -90,7 +86,6 @@ class IngestService:
             content = await self.llm_service.generate_structured_output(
                 messages=messages,
                 response_model=DocumentMetadata,
-                model="openai/gpt-oss-120b",
                 temperature=0.0
             )
             
@@ -149,8 +144,6 @@ class IngestService:
                 "document_type": "Unknown",
                 "manufacturer": "Unknown",
                 "equipment": "Unknown",
-                "revision": "Unknown",
-                "language": "English",
             }
             if metadata:
                 # Merge user overrides
@@ -159,14 +152,14 @@ class IngestService:
                         final_meta[k] = v
 
             # Check if any fields need LLM extraction (i.e. they are still "Unknown")
-            needs_extraction = any(final_meta[k] == "Unknown" for k in ["document_type", "manufacturer", "equipment", "revision"])
+            needs_extraction = any(final_meta[k] == "Unknown" for k in ["document_type", "manufacturer", "equipment"])
             if needs_extraction:
                 # Take sample text from first few chunks
                 sample_chunks = [c.text for c in chunks[:5]]
                 sample_text = "\n".join(sample_chunks)
                 logger.info("Triggering Groq fallback metadata extraction on text sample")
                 llm_meta = await self._extract_metadata_via_llm(sample_text)
-                for k in ["document_type", "manufacturer", "equipment", "revision", "language"]:
+                for k in ["document_type", "manufacturer", "equipment"]:
                     if final_meta.get(k) == "Unknown" and llm_meta.get(k):
                         final_meta[k] = llm_meta[k]
 
@@ -181,8 +174,6 @@ class IngestService:
                 chunk.document_type = final_meta.get("document_type")
                 chunk.manufacturer = final_meta.get("manufacturer")
                 chunk.equipment = final_meta.get("equipment")
-                chunk.revision = final_meta.get("revision")
-                chunk.language = final_meta.get("language")
 
             # Embedding generation
             start_embed = time.perf_counter()
@@ -215,8 +206,6 @@ class IngestService:
                     document_type=final_meta.get("document_type"),
                     manufacturer=final_meta.get("manufacturer"),
                     equipment=final_meta.get("equipment"),
-                    revision=final_meta.get("revision"),
-                    language=final_meta.get("language"),
                 )
                 db.add(doc_record)
                 await db.commit()
@@ -233,8 +222,6 @@ class IngestService:
                 document_type=final_meta.get("document_type"),
                 manufacturer=final_meta.get("manufacturer"),
                 equipment=final_meta.get("equipment"),
-                revision=final_meta.get("revision"),
-                language=final_meta.get("language"),
             )
         except Exception:
             # Clean up the orphaned vectors from Milvus since ingestion failed

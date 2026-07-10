@@ -29,6 +29,18 @@ export default function App() {
   /** @type {[boolean, function(boolean): void]} */
   const [showUpload, setShowUpload] = useState(false);
 
+  /** Dark/Light theme state, persisted in localStorage. */
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark';
+  });
+
+  // Sync body class and localStorage whenever theme changes
+  useEffect(() => {
+    document.body.classList.toggle('dark-theme', isDarkMode);
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
   // Hook-based state slices and actions
   const { 
     messages, 
@@ -68,7 +80,7 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+      <Sidebar activeView={activeView} onViewChange={setActiveView} isDarkMode={isDarkMode} onToggleDarkMode={() => setIsDarkMode(prev => !prev)} />
 
       <div className="app-main">
         <Header />
