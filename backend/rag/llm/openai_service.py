@@ -50,3 +50,34 @@ class OpenAILLMService(LLMProvider):
         except Exception as exc:
             logger.exception("LLM generation failed due to unexpected error")
             raise RuntimeError("An unexpected error occurred during answer generation.") from exc
+
+    async def generate_structured_output(
+        self,
+        messages: list[dict[str, str]],
+        response_model: type,
+        model: str | None = None,
+        temperature: float = 0.0,
+    ) -> str:
+        """Send messages to OpenAI and enforce strict JSON matching the response_model."""
+        try:
+            logger.info("Generating structured output using OpenAI provider with model: %s", model or self.settings.llm_model)
+            
+            completion = await self.client.beta.chat.completions.parse(
+                model=model or self.settings.llm_model,
+                messages=messages,
+                response_format=response_model,
+                temperature=temperature,
+            )
+            
+            content = completion.choices[0].message.content
+            if not content:
+                raise RuntimeError("OpenAI returned an empty response")
+            return content.strip()
+            
+        except openai.APIError as exc:
+            logger.error("OpenAI API error during structured output: %s", exc)
+            raise RuntimeError(f"OpenAI LLM service returned an API error: {exc.message}") from exc
+        except Exception as exc:
+            logger.exception("OpenAI structured output generation failed due to unexpected error")
+            raise RuntimeError("An unexpected error occurred during structured answer generation.") from exc
+

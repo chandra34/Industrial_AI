@@ -70,3 +70,59 @@ class AnthropicLLMService(LLMProvider):
         except Exception as exc:
             logger.exception("LLM generation failed due to unexpected error")
             raise RuntimeError("An unexpected error occurred during answer generation.") from exc
+
+    async def generate_structured_output(
+        self,
+        messages: list[dict[str, str]],
+        response_model: type,
+        model: str | None = None,
+        temperature: float = 0.0,
+    ) -> str:
+        """Send messages to Anthropic and enforce strict JSON matching the response_model."""
+        try:
+            logger.info("Generating structured output using Anthropic provider with model: %s", model or self.settings.llm_model)
+            
+            system_prompt = ""
+            filtered_messages = []
+
+            for msg in messages:
+                role = msg.get("role")
+                content = msg.get("content", "")
+                if role == "system":
+                    system_prompt = content
+                else:
+                    anthropic_role = "assistant" if role in ("assistant", "model") else "user"
+                    filtered_messages.append({
+                        "role": anthropic_role,
+                        "content": content
+                    })
+
+            schema = response_model.model_json_schema()
+
+            completion = await self.client.messages.create(
+                model=model or self.settings.llm_model,
+                max_tokens=self.settings.llm_max_tokens,
+                messages=filtered_messages,
+                system=system_prompt if system_prompt else None,
+                temperature=temperature,
+                output_config={
+                    "format": {
+                        "type": "json_schema",
+                        "schema": schema,
+                    }
+                },
+            )
+            
+            if not completion.content or not completion.content[0].text:
+                raise RuntimeError("Anthropic returned an empty response")
+            
+            parsed = response_model.model_validate_json(completion.content[0].text)
+            return parsed.model_dump_json()
+            
+        except anthropic.APIError as exc:
+            logger.error("Anthropic API error during structured output: %s", exc)
+            raise RuntimeError(f"Anthropic LLM service returned an API error: {exc.message}") from exc
+        except Exception as exc:
+            logger.exception("Anthropic structured output generation failed due to unexpected error")
+            raise RuntimeError("An unexpected error occurred during structured answer generation.") from exc
+
