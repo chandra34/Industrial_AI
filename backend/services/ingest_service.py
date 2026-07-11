@@ -70,8 +70,21 @@ class IngestService:
             manufacturer: str = Field(description="Equipment manufacturer name, or 'Unknown'")
             equipment: str = Field(description="Specific equipment model or name, or 'Unknown'")
 
-        if not self.settings.groq_api_key:
-            logger.warning("GROQ_API_KEY not configured; skipping LLM metadata extraction")
+        # Validate that the API key for the active provider is configured
+        active_provider = self.settings.llm_provider.lower().strip()
+        api_key_configured = False
+
+        if active_provider == "groq" and self.settings.groq_api_key:
+            api_key_configured = True
+        elif active_provider == "openai" and self.settings.openai_api_key:
+            api_key_configured = True
+        elif active_provider == "gemini" and self.settings.gemini_api_key:
+            api_key_configured = True
+        elif active_provider == "anthropic" and self.settings.anthropic_api_key:
+            api_key_configured = True
+
+        if not api_key_configured:
+            logger.warning("LLM API key for active provider '%s' not configured; skipping LLM metadata extraction", active_provider)
             return {}
             
         try:
@@ -92,7 +105,7 @@ class IngestService:
             logger.info("Raw LLM metadata extraction response: %s", content)
             return json.loads(content)
         except Exception as e:
-            logger.exception("Failed to extract metadata via Groq structured outputs: %s", e)
+            logger.exception("Failed to extract metadata via %s structured outputs: %s", active_provider, e)
             return {}
 
     async def ingest_pdf(self, file_bytes: bytes, original_name: str, user_id: str, db: AsyncSession | None = None, metadata: dict | None = None) -> IngestionResult:
@@ -109,7 +122,8 @@ class IngestService:
             if not file_bytes:
                 raise ValueError("Uploaded file is empty")
 
-            stored_path, document_id = await self._save_upload(file_bytes, original_name)
+            safe_filename = Path(original_name).name or "document.pdf"
+            stored_path, document_id = await self._save_upload(file_bytes, safe_filename)
             document_id_var.set(document_id)
             
             logger.info("Upload flow: file validation passed | document_id: %s | stored_path: %s", document_id, stored_path)
@@ -118,7 +132,7 @@ class IngestService:
             start_parse_chunk = time.perf_counter()
             try:
                 parser = get_parser(self.settings)
-                file_key = f"{document_id}_{Path(original_name).name or 'document.pdf'}"
+                file_key = f"{document_id}_{safe_filename}"
                 chunks = await run_in_threadpool(
                     parser.parse,
                     file_bytes,
@@ -198,7 +212,7 @@ class IngestService:
                 doc_record = Document(
                     id=document_id,
                     user_id=user_id,
-                    filename=original_name,
+                    filename=safe_filename,
                     stored_path=str(stored_path),
                     page_count=page_count,
                     chunk_count=len(chunks),
@@ -214,7 +228,7 @@ class IngestService:
             logger.info("Upload flow: request completed successfully | document_id: %s", document_id)
             return IngestionResult(
                 document_id=document_id,
-                filename=original_name,
+                filename=safe_filename,
                 stored_path=str(stored_path),
                 page_count=page_count,
                 chunk_count=len(chunks),
@@ -235,7 +249,7 @@ class IngestService:
             # Clean up the orphaned file since ingestion failed
             if document_id is not None:
                 try:
-                    file_key = f"{document_id}_{Path(original_name).name or 'document.pdf'}"
+                    file_key = f"{document_id}_{safe_filename}"
                     await self.storage_provider.delete_file(file_key)
                     logger.info("Cleaned up orphaned file due to ingestion failure: %s", file_key)
                 except Exception as e:

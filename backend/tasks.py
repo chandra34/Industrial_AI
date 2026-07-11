@@ -63,6 +63,7 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
             logger.info("Background ingestion task completed successfully for job: %s", job_id)
         except Exception as exc:
             logger.exception("Background ingestion failed for job: %s, file: %s", job_id, filename)
+            await db.rollback()
             await job_status_service.update_status(db, job_id, "failed", error=str(exc))
             raise exc
         finally:
