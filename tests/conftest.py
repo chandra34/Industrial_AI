@@ -40,7 +40,15 @@ TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_mock_environment():
-    """Global session-scoped fixture to patch third-party service creation on startup."""
+    """Global session-scoped fixture to patch third-party service creation on startup.
+    
+    When RAG_EVAL=1 is set, all mocking is skipped so that evaluation tests
+    can use real embedding, LLM, and Milvus services.
+    """
+    if os.environ.get("RAG_EVAL"):
+        yield
+        return
+
     mock_reranker = MagicMock()
     mock_parser = MagicMock()
     
