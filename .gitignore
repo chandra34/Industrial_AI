@@ -37,3 +37,7 @@ backend/logs/*
 # Local SQLite metadata database
 *.db
 *.db-journal
+
+# Evaluation documents and reports
+tests/evaluation/documents/
+tests/evaluation/run_report.md

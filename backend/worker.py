@@ -27,6 +27,17 @@ def main():
         logger.info("Detected Unix/Linux OS: using standard Worker (fork-based execution with job isolation)")
         worker = Worker([queue], connection=redis_conn, serializer=JSONSerializer)
         
+    # Pre-warm heavy parser models in parent worker process before starting work
+    parser_type = settings.document_parser.lower().strip()
+    if parser_type == "docling":
+        logger.info("Pre-warming Docling parser in parent worker process to cache models...")
+        try:
+            from backend.ingestion.pipeline import get_parser
+            get_parser(settings)
+            logger.info("Docling parser pre-warmed successfully.")
+        except Exception as exc:
+            logger.warning("Failed to pre-warm Docling parser: %s. Continuing worker initialization...", exc)
+            
     worker.work()
 
 if __name__ == '__main__':

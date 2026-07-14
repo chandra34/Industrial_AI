@@ -1,0 +1,242 @@
+[
+  {
+    "id": "TC001",
+    "category": "direct_lookup",
+    "query": "What is the primary defining mathematical property of a harmonic tensor?",
+    "expected_document": "math.pdf",
+    "expected_page": 3,
+    "metadata_filter": "null",
+    "ground_truth_context": "At any rate, we recall the main property of harmonic tensors: the trace over any pair of indices vanishes [23, 33].",
+    "ground_truth_answer": "The primary defining property of a harmonic tensor is that its trace over any pair of indices vanishes."
+  },
+  {
+    "id": "TC002",
+    "category": "direct_lookup",
+    "query": "What is the electric polarizability value for the ground state of a hydrogen atom where n = 1 and m = 0?",
+    "expected_document": "math.pdf",
+    "expected_page": 14,
+    "metadata_filter": "null",
+    "ground_truth_context": "For the ground state with n = 1 and m = 0 , the electric polarizability is 9/2 a_B^3 , which is a fundamental law of nature.",
+    "ground_truth_answer": "The electric polarizability for the ground state of the hydrogen atom (n = 1, m = 0) is 9/2 a_B^3."
+  },
+  {
+    "id": "TC003",
+    "category": "paraphrased",
+    "query": "Instead of traditional spherical functions, how does the author represent the angular factor in the wave function?",
+    "expected_document": "math.pdf",
+    "expected_page": 5,
+    "metadata_filter": "null",
+    "ground_truth_context": "In this paper, the angular factor is not taken in the form of spherical functions but as a combination of solid spherical functions, i.e., a harmonic degree-l polynomial P_l(x) homogeneous in coordinates...",
+    "ground_truth_answer": "The angular factor is represented as a combination of solid spherical functions using a coordinate-homogeneous harmonic polynomial P_l(x) of degree-l."
+  },
+  {
+    "id": "TC004",
+    "category": "paraphrased",
+    "query": "Why does the Schrödinger equation become nonlocal when transformed into momentum representation?",
+    "expected_document": "math.pdf",
+    "expected_page": 6,
+    "metadata_filter": "null",
+    "ground_truth_context": "Because potential 1/r pass in 4\u03c0 / |p|^2 , the SE in the momentum space is nonlocal: (|p|^2 + 1) a_nl(p) - 2n/2\u03c0^2 \u222ba_nl(p')d^3 p' / |p - p'|^2 = 0.",
+    "ground_truth_answer": "The Schrödinger equation becomes nonlocal in momentum space because the 1/r potential transforms to 4\u03c0 / |p|^2, which results in a convolution integral over the momentum space."
+  },
+  {
+    "id": "TC005",
+    "category": "multi_chunk",
+    "query": "Compare the polynomial and hypergeometric factors used in the solutions for the dipole state and the quadrupole state.",
+    "expected_document": "math.pdf",
+    "expected_page": 6,
+    "metadata_filter": "null",
+    "ground_truth_context": "For the quadrupole state, the solution has the form: (3x_i x_k - r^2 \u03b4_ik) F(-k, 6, 2r) exp(-r), n = 3 + k. ... For the dipole state, the solution is obvious: x_i F(-k, 4, 2r) exp(-r).",
+    "ground_truth_answer": "The dipole solution uses the coordinate polynomial x_i and the confluent hypergeometric function F(-k, 4, 2r), while the quadrupole solution uses the polynomial (3x_i x_k - r^2 \u03b4_ik) and the hypergeometric function F(-k, 6, 2r), both multiplied by exp(-r)."
+  },
+  {
+    "id": "TC006",
+    "category": "out_of_scope",
+    "query": "What is the formula for calculating the thermal conductivity of liquid helium at temperatures below 1 Kelvin?",
+    "expected_document": "math.pdf",
+    "expected_page": null,
+    "metadata_filter": "null",
+    "ground_truth_context": "No information about thermal conductivity or liquid helium is present in this quantum physics paper on Fock's theory.",
+    "ground_truth_answer": "I cannot answer this question because the provided document does not contain any information or equations regarding the thermal conductivity of liquid helium."
+  },
+  {
+    "id": "TC007",
+    "category": "direct_lookup",
+    "query": "What is the required Earnest Money Deposit (EMD) amount for the Abhilekh Patal tender?",
+    "expected_document": "Tender_Document.pdf",
+    "expected_page": 4,
+    "metadata_filter": "null",
+    "ground_truth_context": "Amount: Rs. 4,50,000/- (Rs. Four lakh fifty thousand only).",
+    "ground_truth_answer": "The required Earnest Money Deposit (EMD) amount is Rs. 4,50,000/- (Rs. Four lakh fifty thousand only)."
+  },
+  {
+    "id": "TC008",
+    "category": "direct_lookup",
+    "query": "What is the minimum average annual turnover required for a bidder in the Abhilekh Patal RFP?",
+    "expected_document": "Tender_Document.pdf",
+    "expected_page": 6,
+    "metadata_filter": "null",
+    "ground_truth_context": "3. The respondent should have a minimum average annual turnover of at least Rs.50crore during last three financial years i.e., FY2022-23, FY2023-24, FY2024-25",
+    "ground_truth_answer": "Bidders must have a minimum average annual turnover of at least Rs. 50 crore during the last three financial years (FY2022-23, FY2023-24, FY2024-25)."
+  },
+  {
+    "id": "TC009",
+    "category": "paraphrased",
+    "query": "Can you explain the formula used to combine the technical and financial scores to determine the winning bidder?",
+    "expected_document": "Tender_Document.pdf",
+    "expected_page": 10,
+    "metadata_filter": "null",
+    "ground_truth_context": "Bn = 0.70 * Tn + 0.30 * Fn Where, Bn = overall score of the bidder Tn = Technical score of the bidder (out of maximum of 100marks) Fn = Normalized financial score of the bidder",
+    "ground_truth_answer": "The overall combined score (Bn) is calculated by multiplying the technical score (Tn) by 0.70 and the normalized financial score (Fn) by 0.30, and then adding them together: Bn = 0.70 * Tn + 0.30 * Fn."
+  },
+  {
+    "id": "TC010",
+    "category": "paraphrased",
+    "query": "What is the schedule for completing the knowledge acquisition phase and the AI model deployment phase?",
+    "expected_document": "Tender_Document.pdf",
+    "expected_page": 15,
+    "metadata_filter": "null",
+    "ground_truth_context": "Knowledge Acquisition of Existing Portal: 4 weeks from Date of Agreement ... AI Model Development and Deployment on Abhilekh Patal: 12 Weeks from date of agreement",
+    "ground_truth_answer": "The knowledge acquisition phase for the existing portal must be completed within 4 weeks from the agreement date, while the AI model development and deployment must be completed within 12 weeks from the agreement date."
+  },
+  {
+    "id": "TC011",
+    "category": "multi_chunk",
+    "query": "Summarize the requirements for the Digitize on Demand (DOD) service, including staffing, location, and processing timeline.",
+    "expected_document": "Tender_Documentt.pdf",
+    "expected_page": 13,
+    "metadata_filter": "null",
+    "ground_truth_context": "2. Digitize on Demand (DOD) Service\n- Deploy manpower (minimum 3 personnel) at NAI, HO New Delhi premises during office hours (Monday-Friday) for management of DoD services.\n- Process and deliver digitized records within 1 week of order receipt.",
+    "ground_truth_answer": "The Digitize on Demand (DOD) service requires the technology partner to deploy a minimum of 3 personnel at the NAI Head Office in New Delhi during standard office hours (Monday to Friday) to process and deliver digitized records within 1 week of order receipt."
+  },
+  {
+    "id": "TC012",
+    "category": "out_of_scope",
+    "query": "What are the step-by-step command line instructions to launch a g5.xlarge GPU EC2 instance on AWS using the AWS CLI?",
+    "expected_document": "Tender_Document.pdf",
+    "expected_page": null,
+    "metadata_filter": "null",
+    "ground_truth_context": "No instructions or commands for launching AWS EC2 instances or using the AWS CLI are present in this tender document.",
+    "ground_truth_answer": "I am sorry, but the provided tender document does not contain technical instructions or CLI commands for launching AWS EC2 instances."
+  },
+  {
+    "id": "TC013",
+    "category": "paraphrased",
+    "query": "What action should be taken immediately once steam starts to generate in the boiler?",
+    "expected_document": "steam_boiler_sop.pdf",
+    "expected_page": 1,
+    "metadata_filter": "null",
+    "ground_truth_context": "10. When steam forms, close air vent.",
+    "ground_truth_answer": "As soon as steam begins to form, you must close the air vent."
+  },
+  {
+    "id": "TC014",
+    "category": "direct_lookup",
+    "query": "What are the three steps required to secure the steam boiler according to the SOP?",
+    "expected_document": "steam_boiler_sop.pdf",
+    "expected_page": 2,
+    "metadata_filter": "null",
+    "ground_truth_context": "TO SECURE\n1. Turn off main power switch to boiler.\n2. Close main gas valve.\n3. Close pilot gas valve.",
+    "ground_truth_answer": "The three steps to secure the steam boiler are: 1. Turn off the main power switch to the boiler, 2. Close the main gas valve, and 3. Close the pilot gas valve."
+  },
+  {
+    "id": "TC015",
+    "category": "direct_lookup",
+    "query": "What are the allowed temperature increase rates per minute when warming up the main steam line below and above 300 degrees Celsius?",
+    "expected_document": "power_plant_sop.pdf",
+    "expected_page": 6,
+    "metadata_filter": "null",
+    "ground_truth_context": "It is to be noted that increase of temperature up to 300 deg C should be 3-5 deg C per minute. Above 300 degC the increase of main steam line should be 5-7 degC per minute.",
+    "ground_truth_answer": "The temperature increase rate should be 3 to 5 degrees Celsius per minute up to 300 degrees Celsius, and 5 to 7 degrees Celsius per minute above 300 degrees Celsius."
+  },
+  {
+    "id": "TC016",
+    "category": "direct_lookup",
+    "query": "What is the specific time limit and RPM percentage required for the Boiler Feed Water Pump during startup to prevent bearing damage?",
+    "expected_document": "power_plant_sop.pdf",
+    "expected_page": 4,
+    "metadata_filter": "null",
+    "ground_truth_context": "Ensure pump has reached 50% RPM in just 10 seconds to avoid bearing failure & rubbing of balance & counter balance discs.",
+    "ground_truth_answer": "The Boiler Feed Water Pump must reach 50% RPM in exactly 10 seconds during startup to prevent bearing failure and rubbing of the balance and counter-balance discs."
+  },
+  {
+    "id": "TC017",
+    "category": "paraphrased",
+    "query": "How do centrifugal and positive displacement pumps differ in terms of the initial discharge valve position when starting up?",
+    "expected_document": "power_plant_sop.pdf",
+    "expected_page": 2,
+    "metadata_filter": "null",
+    "ground_truth_context": "Centrifugal pump startup: \"Ensure Discharge valve is closed.\"\nPositive displacement pump startup: \"Note: Positive displacement pumps should be always started with discharge valve open\"",
+    "ground_truth_answer": "A centrifugal pump is initially started with its discharge valve closed, while a positive displacement pump must always be started with the discharge valve completely open."
+  },
+  {
+    "id": "TC018",
+    "category": "paraphrased",
+    "query": "In the Hogger ejector system, how does the timing of charging the gland sealing vary between a cold startup and a hot startup?",
+    "expected_document": "power_plant_sop.pdf",
+    "expected_page": 6,
+    "metadata_filter": "null",
+    "ground_truth_context": "Note: During cold start up gland sealing is charged after taking hogger into line (after vacuum pulling) i.e say at vacuum -0.2 to -0.5 kg/cm2 & During hot start up gland sealing is charged before taking hogger into line (before vacuum pulling).",
+    "ground_truth_answer": "During a cold startup, the gland sealing is charged after the Hogger is placed in service (following vacuum pulling to -0.2 to -0.5 kg/cm2), whereas during a hot startup, the gland sealing must be charged before putting the Hogger into service (prior to vacuum pulling)."
+  },
+  {
+    "id": "TC019",
+    "category": "direct_lookup",
+    "query": "What is the patient's Fasting Blood Sugar level and its reference range?",
+    "expected_document": "lab_report.pdf",
+    "expected_page": 4,
+    "metadata_filter": "null",
+    "ground_truth_context": "Fasting Blood Sugar H 141.0 mg/dL 74 - 106",
+    "ground_truth_answer": "The patient's Fasting Blood Sugar level is 141.0 mg/dL, which is high compared to the reference range of 74 - 106 mg/dL."
+  },
+  {
+    "id": "TC020",
+    "category": "direct_lookup",
+    "query": "What is the patient's Vitamin D level and the classification of this result?",
+    "expected_document": "lab_report.pdf",
+    "expected_page": 12,
+    "metadata_filter": "null",
+    "ground_truth_context": "25(OH) Vitamin D 8.98 ng/mL Deficiency : <10",
+    "ground_truth_answer": "The patient's Vitamin D level is 8.98 ng/mL, which indicates a Vitamin D deficiency (defined as levels below 10 ng/mL)."
+  },
+  {
+    "id": "TC021",
+    "category": "paraphrased",
+    "query": "What is the patient's blood type and is the Rh factor positive or negative?",
+    "expected_document": "lab_report.pdf",
+    "expected_page": 2,
+    "metadata_filter": "null",
+    "ground_truth_context": "ABO Type \"A\" Rh (D) Type Positive",
+    "ground_truth_answer": "The patient has blood type A positive (ABO Type A, Rh positive)."
+  },
+  {
+    "id": "TC022",
+    "category": "paraphrased",
+    "query": "Based on the HbA1c percentage, does the patient meet the screening threshold for diabetes?",
+    "expected_document": "lab_report.pdf",
+    "expected_page": 5,
+    "metadata_filter": "null",
+    "ground_truth_context": "HbA1c H 7.10 % For Screening: Diabetes: >6.5%",
+    "ground_truth_answer": "Yes, the patient's HbA1c level is 7.10%, which exceeds the screening threshold for diabetes (defined as greater than 6.5%)."
+  },
+  {
+    "id": "TC023",
+    "category": "multi_chunk",
+    "query": "Identify the specific vitamin deficiencies shown in the patient's report, including both Vitamin D and Vitamin B12 values.",
+    "expected_document": "lab_report.pdf",
+    "expected_page": 13,
+    "metadata_filter": "null",
+    "ground_truth_context": "25(OH) Vitamin D 8.98 ng/mL Deficiency : <10\nVitamin B12 L < 148 pg/mL 187 - 833",
+    "ground_truth_answer": "The patient is deficient in both Vitamin D and Vitamin B12, with a Vitamin D level of 8.98 ng/mL (Deficiency: <10 ng/mL) and a Vitamin B12 level of < 148 pg/mL (Reference range: 187 - 833 pg/mL)."
+  },
+  {
+    "id": "TC024",
+    "category": "out_of_scope",
+    "query": "What was the patient's systolic and diastolic blood pressure reading recorded during the examination?",
+    "expected_document": "lab_report.pdf",
+    "expected_page": null,
+    "metadata_filter": "null",
+    "ground_truth_context": "No blood pressure measurements are contained in this laboratory test report.",
+    "ground_truth_answer": "I am sorry, but the provided laboratory test report does not contain any information regarding the patient's blood pressure."
+  }
+]

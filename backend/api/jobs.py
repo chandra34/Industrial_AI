@@ -16,6 +16,7 @@ from backend.api.auth import get_current_user, FirebaseUser
 from backend.api.dependencies import get_job_status_service, get_db
 from backend.services.job_status_service import JobStatusService
 from backend.tasks import run_ingest_task
+from backend.services.storage import create_storage_provider
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -84,7 +85,11 @@ async def upload_pdf(
     job_id = uuid4().hex
     await job_status_service.create_job(db, job_id, current_user.uid)
 
-    file_bytes_b64 = base64.b64encode(file_bytes).decode("utf-8")
+    # Initialize storage provider and upload the PDF file to temporary storage
+    storage_provider = create_storage_provider(settings)
+    safe_filename = Path(file.filename).name or "document.pdf"
+    file_key = f"temp_{job_id}_{safe_filename}"
+    await storage_provider.upload_file(file_bytes, file_key)
 
     metadata = {
         "document_type": document_type,
@@ -95,7 +100,7 @@ async def upload_pdf(
     task_queue.enqueue(
         run_ingest_task,
         job_id,
-        file_bytes_b64,
+        file_key,
         file.filename,
         current_user.uid,
         metadata=metadata,

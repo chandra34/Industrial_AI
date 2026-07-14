@@ -11,19 +11,19 @@ from backend.schemas.documents import UploadResponse
 
 logger = logging.getLogger(__name__)
 
-def run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str, metadata: dict | None = None) -> None:
+def run_ingest_task(job_id: str, file_key: str, filename: str, user_id: str, metadata: dict | None = None) -> None:
     """Synchronous task wrapper called by the RQ worker.
     
     Bridges RQ's synchronous execution with the async ingestion pipeline using asyncio.run.
     """
     logger.info("Starting background ingestion task for job: %s, file: %s", job_id, filename)
     try:
-        asyncio.run(async_run_ingest_task(job_id, file_bytes_b64, filename, user_id, metadata))
+        asyncio.run(async_run_ingest_task(job_id, file_key, filename, user_id, metadata))
     except Exception as exc:
         logger.exception("Failed to run async_run_ingest_task for job: %s", job_id)
         raise exc
 
-async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str, user_id: str, metadata: dict | None = None) -> None:
+async def async_run_ingest_task(job_id: str, file_key: str, filename: str, user_id: str, metadata: dict | None = None) -> None:
     """Asynchronous worker function that handles client initialization and runs document ingestion."""
     settings = get_settings()
     
@@ -37,9 +37,16 @@ async def async_run_ingest_task(job_id: str, file_bytes_b64: str, filename: str,
     ingest_service = IngestService(settings, vector_store, embedding_service, llm_service, storage_provider)
     job_status_service = JobStatusService()
     
-    # Decode the base64 payload to binary bytes for parsing
-    import base64
-    file_bytes = base64.b64decode(file_bytes_b64)
+    # Download the temporary upload from storage
+    logger.info("Downloading file %s from temporary storage for ingestion", file_key)
+    file_bytes = await storage_provider.download_file(file_key)
+    
+    # Clean up the temporary file from storage
+    try:
+        await storage_provider.delete_file(file_key)
+        logger.info("Deleted temporary upload file: %s", file_key)
+    except Exception as cleanup_exc:
+        logger.warning("Failed to delete temporary file %s: %s", file_key, cleanup_exc)
     
     async with AsyncSessionLocal() as db:
         try:
