@@ -17,7 +17,6 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.headerLeft}>
-        <img src="/favicon.svg" alt="Logo" width="28" height="28" style={{ marginRight: '10px' }} />
         <span className={styles.headerTitle}>{appName}</span>
       </div>
       <div className={styles.headerRight}>
