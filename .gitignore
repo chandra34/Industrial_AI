@@ -41,3 +41,6 @@ backend/logs/*
 # Evaluation documents and reports
 tests/evaluation/documents/
 tests/evaluation/run_report.md
+
+#Deployment Guide
+deployment_guide.md
