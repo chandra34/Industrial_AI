@@ -74,6 +74,7 @@ class Settings(BaseSettings):
 
     # Reranker Settings
     reranker_enabled: bool = Field(default=True, alias="RERANKER_ENABLED")
+    reranker_provider: str = Field(default="huggingface", alias="RERANKER_PROVIDER")  # "huggingface" or "voyage"
     reranker_model_name: str = Field(default="BAAI/bge-reranker-v2-m3", alias="RERANKER_MODEL_NAME")
     hf_token: str = Field(default="", alias="HF_TOKEN")
     reranker_candidate_k: int = Field(default=25, alias="RERANKER_CANDIDATE_K")

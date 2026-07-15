@@ -37,7 +37,9 @@ def pytest_collection_modifyitems(config, items):
         return
     skip_marker = pytest.mark.skip(reason="RAG_EVAL env var not set. Skipping evaluation tests.")
     for item in items:
-        item.add_marker(skip_marker)
+        path_str = str(getattr(item, "path", getattr(item, "fspath", "")))
+        if "evaluation" in path_str or "evaluation" in item.nodeid:
+            item.add_marker(skip_marker)
 
 
 # ---------------------------------------------------------------------------
