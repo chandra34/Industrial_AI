@@ -41,7 +41,7 @@
 }
 
 .chat-message--bot .chat-message-avatar {
-  background: #e0f0ff;
+  background: transparent;
   color: #3b82f6;
 }
 
