@@ -3,11 +3,19 @@ OPC UA connection configuration settings using Pydantic v2.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class OPCUAConfig(BaseModel):
+class OPCUAConfig(BaseSettings):
     """Configuration model for connecting to an OPC UA server."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="OPCUA_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     endpoint_url: str = Field(
         default="opc.tcp://localhost:4840",
@@ -22,7 +30,7 @@ class OPCUAConfig(BaseModel):
         default=None,
         description="Username for authentication if required",
     )
-    password: Optional[str] = Field(
+    password: Optional[SecretStr] = Field(
         default=None,
         description="Password for authentication if required",
     )

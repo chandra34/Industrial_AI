@@ -121,7 +121,7 @@ class OPCUAClient:
             if self.config.username is not None and self.config.password is not None:
                 logger.info("Configuring Username/Password authentication for user: %s", self.config.username)
                 self._client.set_user(self.config.username)
-                self._client.set_password(self.config.password)
+                self._client.set_password(self.config.password.get_secret_value())
             else:
                 logger.info("Configuring Anonymous authentication")
 

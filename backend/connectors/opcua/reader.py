@@ -4,7 +4,8 @@ OPC UA Reader for querying node values and metadata from an OPC UA server.
 
 import logging
 from typing import Any, Dict, List
-from backend.connectors.opcua.client import OPCUAClient
+from backend.connectors.opcua.connection import OPCUAClient
+from backend.connectors.opcua.exceptions import OPCUANotConnectedError
 
 logger = logging.getLogger(__name__)
 
@@ -17,20 +18,18 @@ class OPCUAReader:
 
     async def read_node_value(self, node_id: str) -> Any:
         """Read current value of a single node by node ID."""
-        if not self.client.is_connected:
-            raise RuntimeError("OPCUAClient must be connected before reading values.")
+        if self.client._client is None:
+            raise OPCUANotConnectedError(
+                "OPCUAClient must be connected before reading values. Call connect() first."
+            )
 
-        logger.debug(f"Reading value for node {node_id}")
+        logger.debug("Reading value for node %s", node_id)
         try:
-            if self.client._client is not None:
-                node = self.client._client.get_node(node_id)
-                value = await node.read_value()
-                return value
-            else:
-                logger.info(f"Reading mock value for node {node_id}")
-                return 42.0
+            node = self.client._client.get_node(node_id)
+            value = await node.read_value()
+            return value
         except Exception as e:
-            logger.error(f"Error reading node value for {node_id}: {e}", exc_info=True)
+            logger.error("Error reading node value for %s: %s", node_id, e, exc_info=True)
             raise
 
     async def read_multiple_nodes(self, node_ids: List[str]) -> Dict[str, Any]:
@@ -47,31 +46,23 @@ class OPCUAReader:
 
     async def read_node_details(self, node_id: str) -> Dict[str, Any]:
         """Read detailed metadata of a node including value, data type, and timestamps."""
-        if not self.client.is_connected:
-            raise RuntimeError("OPCUAClient must be connected before reading node details.")
+        if self.client._client is None:
+            raise OPCUANotConnectedError(
+                "OPCUAClient must be connected before reading node details. Call connect() first."
+            )
 
         try:
-            if self.client._client is not None:
-                node = self.client._client.get_node(node_id)
-                data_value = await node.read_data_value()
-                browse_name = await node.read_browse_name()
-                return {
-                    "node_id": node_id,
-                    "browse_name": browse_name.Name,
-                    "value": data_value.Value.Value,
-                    "status_code": str(data_value.StatusCode),
-                    "source_timestamp": str(data_value.SourceTimestamp),
-                    "server_timestamp": str(data_value.ServerTimestamp),
-                }
-            else:
-                return {
-                    "node_id": node_id,
-                    "browse_name": f"MockNode_{node_id}",
-                    "value": 42.0,
-                    "status_code": "Good",
-                    "source_timestamp": "2026-07-28T00:00:00Z",
-                    "server_timestamp": "2026-07-28T00:00:00Z",
-                }
+            node = self.client._client.get_node(node_id)
+            data_value = await node.read_data_value()
+            browse_name = await node.read_browse_name()
+            return {
+                "node_id": node_id,
+                "browse_name": browse_name.Name,
+                "value": data_value.Value.Value,
+                "status_code": str(data_value.StatusCode),
+                "source_timestamp": str(data_value.SourceTimestamp),
+                "server_timestamp": str(data_value.ServerTimestamp),
+            }
         except Exception as e:
             logger.error(f"Error reading node details for {node_id}: {e}", exc_info=True)
             raise

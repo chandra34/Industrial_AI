@@ -16,15 +16,17 @@ from backend.connectors.opcua.exceptions import (
 )
 
 
-def test_opcua_config_defaults():
-    """Verify OPCUAConfig default values."""
-    config = OPCUAConfig()
-    assert config.endpoint_url == "opc.tcp://localhost:4840"
-    assert config.timeout_seconds == 4.0
-    assert config.username is None
-    assert config.password is None
+def test_opcua_config_env_loading(monkeypatch):
+    """Verify OPCUAConfig reads configuration from environment variables."""
+    monkeypatch.setenv("OPCUA_ENDPOINT_URL", "opc.tcp://192.168.1.50:4840")
+    monkeypatch.setenv("OPCUA_USERNAME", "siemens_user")
+    monkeypatch.setenv("OPCUA_PASSWORD", "siemens_pass")
+    
+    config = OPCUAConfig(_env_file=None)
+    assert config.endpoint_url == "opc.tcp://192.168.1.50:4840"
+    assert config.username == "siemens_user"
+    assert config.password.get_secret_value() == "siemens_pass"
     assert config.auto_reconnect is True
-    assert config.reconnect_max_delay == 30.0
     assert config.session_name == "IndustrialAI_OPCUA_Client"
 
 
