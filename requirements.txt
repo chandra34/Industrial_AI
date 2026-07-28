@@ -24,3 +24,4 @@ anthropic>=0.25.0
 redis>=5.0.1
 rq>=1.16.2
 tenacity==8.5.0
+asyncua>=1.0.0
