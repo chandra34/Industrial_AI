@@ -7,14 +7,16 @@ import UploadModal from './components/UploadModal';
 import SettingsPanel from './components/SettingsPanel';
 import { useAuth } from './context/AuthContext';
 import { useChat } from './hooks/useChat';
+import { useAgentChat } from './hooks/useAgentChat';
 import { useDocuments } from './hooks/useDocuments';
 
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const SafetyReviewDashboard = lazy(() => import('./components/SafetyReviewDashboard'));
+const AgentChatArea = lazy(() => import('./components/AgentChatArea'));
 
 /**
  * The main App layout component managing the RAG application lifecycle.
- * Orchestrates views (chat, documents, settings, safety reviews) and coordinates
+ * Orchestrates views (chat, agent, documents, settings, safety reviews) and coordinates
  * state slices fetched via decoupled custom hooks.
  *
  * @component
@@ -23,7 +25,7 @@ const SafetyReviewDashboard = lazy(() => import('./components/SafetyReviewDashbo
 export default function App() {
   const { user } = useAuth();
   
-  /** @type {['chat'|'review'|'documents'|'settings', function(string): void]} */
+  /** @type {['chat'|'agent'|'review'|'documents'|'settings', function(string): void]} */
   const [activeView, setActiveView] = useState('chat');
   
   /** @type {[boolean, function(boolean): void]} */
@@ -51,6 +53,13 @@ export default function App() {
     clearMessages 
   } = useChat();
 
+  const {
+    messages: agentMessages,
+    isLoading: agentIsLoading,
+    handleSend: handleAgentSend,
+    clearMessages: clearAgentMessages,
+  } = useAgentChat();
+
   const { 
     documents, 
     handleDeleteDocument, 
@@ -62,13 +71,15 @@ export default function App() {
   useEffect(() => {
     if (!user) {
       clearMessages();
+      clearAgentMessages();
       clearDocuments();
       setShowUpload(false);
       return;
     }
     clearMessages();
+    clearAgentMessages();
     setShowUpload(false);
-  }, [user, clearMessages, clearDocuments]);
+  }, [user, clearMessages, clearAgentMessages, clearDocuments]);
 
   if (!user) {
     return (
@@ -96,9 +107,18 @@ export default function App() {
               />
             )}
 
+            {activeView === 'agent' && (
+              <AgentChatArea
+                messages={agentMessages}
+                isLoading={agentIsLoading}
+                onSend={handleAgentSend}
+              />
+            )}
+
             {activeView === 'review' && (
               <SafetyReviewDashboard />
             )}
+
 
             {activeView === 'documents' && (
               <DocumentsPanel

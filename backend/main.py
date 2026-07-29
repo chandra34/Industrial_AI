@@ -24,6 +24,9 @@ from backend.services.job_status_service import JobStatusService
 from backend.services.storage import create_storage_provider
 from backend.vectordb.milvus_db import MilvusStore
 from backend.utils.logging_context import CorrelationFilter, request_id_var, route_var, clear_context
+from backend.connectors.sap import SAPClient, SAPConfig
+from backend.agents.orchestrator import IndustrialOrchestrator
+
 
 settings = get_settings()
 
@@ -248,7 +251,16 @@ async def on_startup() -> None:
     app.state.job_status_service = JobStatusService()
     app.state.rag_pipeline = RAGPipeline(settings, retrieval_service, llm_service)
 
+    # Native Industrial Multi-Agent Orchestrator
+    sap_config = SAPConfig(_env_file=None)
+    sap_client = SAPClient(sap_config)
+    app.state.industrial_orchestrator = IndustrialOrchestrator(
+        sap_client=sap_client,
+        retrieval_service=retrieval_service,
+    )
+
     logger.info("Application startup complete")
+
 
 
 @app.on_event("shutdown")

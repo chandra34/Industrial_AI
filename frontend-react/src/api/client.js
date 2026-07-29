@@ -196,3 +196,26 @@ export async function reviewPermit(permitText, equipment = null, manufacturer = 
     }),
   });
 }
+
+/**
+ * Submits a natural language query to the multi-agent orchestrator.
+ *
+ * @async
+ * @param {string} query - The user's question.
+ * @param {string} [userRole='operator'] - User authorization role.
+ * @param {string|null} [plantId=null] - Optional default plant ID context.
+ * @param {number} [maxSteps=5] - Max tool execution iterations (1–10).
+ * @returns {Promise<{query: string, answer: string, steps_taken: number, tool_calls: Array, llm_provider_used: string, llm_model_used: string}>} The agent response payload.
+ */
+export async function queryAgent(query, userRole = 'operator', plantId = null, maxSteps = 5) {
+  return request('POST', '/agent/query', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      user_role: userRole,
+      plant_id: plantId,
+      max_steps: maxSteps,
+    }),
+  });
+}
+

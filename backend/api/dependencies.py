@@ -4,6 +4,7 @@ from backend.rag.pipeline import RAGPipeline
 from backend.services.document_service import DocumentService
 from backend.services.job_status_service import JobStatusService
 from backend.services.storage import BaseStorageProvider
+from backend.agents.orchestrator import IndustrialOrchestrator
 from backend.database.session import get_db  # noqa: F401 – re-exported for route injection
 
 
@@ -30,3 +31,8 @@ def get_job_status_service(request: Request) -> JobStatusService:
 def get_storage_provider(request: Request) -> BaseStorageProvider:
     """FastAPI dependency to retrieve the BaseStorageProvider from app state."""
     return request.app.state.storage_provider
+
+
+def get_industrial_orchestrator(request: Request) -> IndustrialOrchestrator:
+    """FastAPI dependency to retrieve the IndustrialOrchestrator from app state."""
+    return request.app.state.industrial_orchestrator
