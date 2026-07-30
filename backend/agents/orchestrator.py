@@ -79,7 +79,14 @@ class IndustrialOrchestrator:
             if self.llm_provider.provider == "openai":
                 messages.append(raw_msg)
             else:
-                messages.append({"role": "assistant", "content": unified_msg.content})
+                messages.append({
+                    "role": "assistant",
+                    "content": unified_msg.content,
+                    "tool_calls": [
+                        {"name": tc.name, "arguments": tc.arguments}
+                        for tc in unified_msg.tool_calls
+                    ] if unified_msg.tool_calls else None,
+                })
 
             # Execute each requested tool
             for tc in unified_msg.tool_calls:
@@ -97,6 +104,8 @@ class IndustrialOrchestrator:
                         kwargs = dict(tool_args)
                         if "client" in sig.parameters:
                             kwargs["client"] = self.sap_client
+                        if "opcua_client" in sig.parameters:
+                            kwargs["opcua_client"] = self.opcua_client
                         if "retrieval_service" in sig.parameters:
                             kwargs["retrieval_service"] = self.retrieval_service
                         result = await func(**kwargs)
@@ -120,6 +129,7 @@ class IndustrialOrchestrator:
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
+                    "name": tc.name,
                     "content": json.dumps(result),
                 })
 

@@ -25,6 +25,7 @@ from backend.services.storage import create_storage_provider
 from backend.vectordb.milvus_db import MilvusStore
 from backend.utils.logging_context import CorrelationFilter, request_id_var, route_var, clear_context
 from backend.connectors.sap import SAPClient, SAPConfig
+from backend.connectors.opcua import OPCUAClient, OPCUAConfig
 from backend.agents.orchestrator import IndustrialOrchestrator
 
 
@@ -254,8 +255,11 @@ async def on_startup() -> None:
     # Native Industrial Multi-Agent Orchestrator
     sap_config = SAPConfig(_env_file=None)
     sap_client = SAPClient(sap_config)
+    opcua_config = OPCUAConfig(_env_file=None)
+    opcua_client = OPCUAClient(opcua_config)
     app.state.industrial_orchestrator = IndustrialOrchestrator(
         sap_client=sap_client,
+        opcua_client=opcua_client,
         retrieval_service=retrieval_service,
     )
 
@@ -275,3 +279,12 @@ async def on_shutdown() -> None:
     if vector_store:
         await vector_store.close()
         logger.info("Closed MilvusStore connections")
+
+    orchestrator = getattr(app.state, "industrial_orchestrator", None)
+    if orchestrator:
+        if hasattr(orchestrator, "sap_client") and orchestrator.sap_client:
+            await orchestrator.sap_client.disconnect()
+            logger.info("Closed SAPClient session")
+        if hasattr(orchestrator, "opcua_client") and orchestrator.opcua_client:
+            await orchestrator.opcua_client.disconnect()
+            logger.info("Closed OPCUAClient session")
