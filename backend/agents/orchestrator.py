@@ -43,10 +43,11 @@ class IndustrialOrchestrator:
         self.llm_provider = LLMProvider(provider=provider, model=model)
         self.tool_definitions = get_openai_tool_definitions()
 
-    async def run(self, request: AgentQueryRequest) -> AgentResponse:
+    async def run(self, request: AgentQueryRequest, user_id: str = "default_user") -> AgentResponse:
         """Run the native async tool call loop.
 
         :param request: AgentQueryRequest object containing user prompt and config.
+        :param user_id: Authenticated user ID context string.
         :return: AgentResponse object with final text answer and execution log.
         """
         start_time = time.time()
@@ -79,14 +80,19 @@ class IndustrialOrchestrator:
             if self.llm_provider.provider == "openai":
                 messages.append(raw_msg)
             else:
-                messages.append({
-                    "role": "assistant",
-                    "content": unified_msg.content,
-                    "tool_calls": [
-                        {"name": tc.name, "arguments": tc.arguments}
-                        for tc in unified_msg.tool_calls
-                    ] if unified_msg.tool_calls else None,
-                })
+                # Preserve the raw content dictionary from the Gemini REST response
+                # This retains the thoughtSignature required for multi-turn tool calling
+                if isinstance(raw_msg, dict) and "candidates" in raw_msg and raw_msg["candidates"]:
+                    messages.append(raw_msg["candidates"][0]["content"])
+                else:
+                    messages.append({
+                        "role": "assistant",
+                        "content": unified_msg.content,
+                        "tool_calls": [
+                            {"name": tc.name, "arguments": tc.arguments}
+                            for tc in unified_msg.tool_calls
+                        ] if unified_msg.tool_calls else None,
+                    })
 
             # Execute each requested tool
             for tc in unified_msg.tool_calls:
@@ -108,6 +114,8 @@ class IndustrialOrchestrator:
                             kwargs["opcua_client"] = self.opcua_client
                         if "retrieval_service" in sig.parameters:
                             kwargs["retrieval_service"] = self.retrieval_service
+                        if "user_id" in sig.parameters:
+                            kwargs["user_id"] = user_id
                         result = await func(**kwargs)
                     else:
                         result = {"error": f"Tool '{tool_name}' not found."}

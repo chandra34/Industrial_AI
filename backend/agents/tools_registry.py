@@ -158,7 +158,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "check_material_stock",
-                "description": "Check real-time inventory stock level for a material in an SAP plant.",
+                "description": "Check real-time inventory stock level for a material in an SAP plant from SAP ERP. Do not use for live machine metrics or document deadlines.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -249,7 +249,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "get_material_master",
-                "description": "Get material master specifications, description, dimensions, and base weight from SAP MM.",
+                "description": "Get material master specifications, description, dimensions, and base weight from SAP MM. Do not use for machine telemetry or document guidelines/deadlines.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -309,11 +309,11 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "search_technical_manuals",
-                "description": "Search PDF equipment manuals, SOPs, and safety instructions in Vector DB.",
+                "description": "Search PDF equipment manuals, SOPs, task deadlines, submission dates, project files, and safety instructions in Vector DB.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "Search query text"},
+                        "query": {"type": "string", "description": "Search query text (e.g. 'lubrication frequency', 'task submission deadline')"},
                         "top_k": {"type": "integer", "default": 3},
                     },
                     "required": ["query"],
@@ -337,7 +337,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "search_opcua_nodes",
-                "description": "Search OPC UA node browse names for a tag or sensor keyword (e.g. 'vibration', 'temperature', 'boiler').",
+                "description": "Search OPC UA node browse names for a tag or sensor keyword (e.g. 'vibration', 'temperature', 'boiler'). Do not use for document search or SAP material lookup.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -352,7 +352,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "read_opcua_node_value",
-                "description": "Read current live numerical or string value from an OPC UA sensor node ID.",
+                "description": "Read current live numerical or string value from an OPC UA sensor node ID. Do not use for business data, materials, or manual documentation.",
                 "parameters": {
                     "type": "object",
                     "properties": {

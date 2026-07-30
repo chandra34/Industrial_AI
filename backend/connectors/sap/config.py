@@ -35,9 +35,13 @@ class SAPConfig(BaseSettings):
     )
 
     # --- Authentication ---
-    auth_type: Literal["basic", "oauth2"] = Field(
+    auth_type: Literal["basic", "oauth2", "apikey"] = Field(
         default="basic",
-        description="Authentication method: 'basic' for username/password, 'oauth2' for Client Credentials Grant.",
+        description="Authentication method: 'basic', 'oauth2', or 'apikey' (for SAP Business Accelerator Hub Sandbox).",
+    )
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="API Key for SAP Business Accelerator Hub Sandbox (when auth_type='apikey').",
     )
     username: Optional[str] = Field(
         default=None,

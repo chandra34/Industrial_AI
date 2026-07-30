@@ -79,6 +79,11 @@ class SAPClient:
                     username=self.config.username,
                     password=self.config.password.get_secret_value(),
                 )
+            elif self.config.auth_type == "apikey":
+                if not self.config.api_key:
+                    raise SAPAuthenticationError(
+                        "API Key auth requires SAP_API_KEY environment variable."
+                    )
 
             self._client = httpx.AsyncClient(
                 base_url=self.config.base_url,
@@ -181,6 +186,8 @@ class SAPClient:
         headers: Dict[str, str] = {}
         if self.config.auth_type == "oauth2" and self._oauth_token:
             headers["Authorization"] = f"Bearer {self._oauth_token}"
+        elif self.config.auth_type == "apikey" and self.config.api_key:
+            headers["apikey"] = self.config.api_key.get_secret_value()
         return headers
 
     # --- CSRF Token (for write operations) ---
@@ -247,9 +254,10 @@ class SAPClient:
 
         # Build OData query parameters
         params: Dict[str, str] = {
-            "sap-client": self.config.sap_client,
             "$format": "json",
         }
+        if self.config.auth_type != "apikey":
+            params["sap-client"] = self.config.sap_client
         if filter_expr:
             params["$filter"] = filter_expr
         if select_fields:
@@ -309,6 +317,40 @@ class SAPClient:
                 response_body=response.text[:500],
             )
 
-        data = response.json()
-        logger.debug("SAP OData response received: %d bytes", len(response.content))
+        # Guard against empty response body (SAP may return 200 with no content)
+        raw_bytes = response.content
+        if not raw_bytes or not raw_bytes.strip():
+            logger.warning(
+                "SAP returned HTTP %d with empty body for: %s | Content-Type: %s | Content-Length: %s",
+                response.status_code,
+                url,
+                response.headers.get("content-type", "unknown"),
+                response.headers.get("content-length", "missing"),
+            )
+            return {}
+
+        # Attempt JSON parsing with detailed error logging
+        try:
+            data = response.json()
+        except Exception as e:
+            body_preview = response.text[:500] if response.text else "(empty)"
+            logger.error(
+                "Failed to parse SAP response as JSON for: %s | "
+                "HTTP %d | Content-Type: %s | Body length: %d | Body preview: %s",
+                url,
+                response.status_code,
+                response.headers.get("content-type", "unknown"),
+                len(raw_bytes),
+                body_preview,
+            )
+            raise SAPAPIError(
+                f"SAP returned non-JSON response (HTTP {response.status_code}). "
+                f"Content-Type: {response.headers.get('content-type', 'unknown')}. "
+                f"Body: {body_preview[:200]}",
+                status_code=response.status_code,
+                response_body=body_preview,
+            ) from e
+
+        logger.debug("SAP OData response received: %d bytes", len(raw_bytes))
         return data
+
