@@ -111,26 +111,70 @@ class LLMProvider:
         api_key = os.getenv("GEMINI_API_KEY")
         client = Client(api_key=api_key) if api_key else Client()
 
-        contents = []
+        contents: List[types.Content] = []
         system_instruction = None
 
         for m in messages:
             role = m.get("role")
             content = m.get("content", "")
+
             if role == "system":
                 system_instruction = content
-            else:
-                gemini_role = "user" if role in ("user", "tool") else "model"
+
+            elif role == "user":
                 contents.append(
                     types.Content(
-                        role=gemini_role,
+                        role="user",
                         parts=[types.Part.from_text(text=str(content or ""))]
+                    )
+                )
+
+            elif role == "assistant":
+                parts = []
+                if content:
+                    parts.append(types.Part.from_text(text=str(content)))
+
+                # Map history of assistant's tool call requests
+                if m.get("tool_calls"):
+                    for tc in m["tool_calls"]:
+                        tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+                        tc_args = tc.get("arguments") if isinstance(tc, dict) else getattr(tc, "arguments", {})
+                        if tc_name:
+                            parts.append(
+                                types.Part.from_function_call(
+                                    name=tc_name,
+                                    args=tc_args or {}
+                                )
+                            )
+                contents.append(types.Content(role="model", parts=parts if parts else [types.Part.from_text(text="")]))
+
+            elif role == "tool":
+                # Map history of tool response results back to the model
+                tool_name = m.get("name", "unknown_tool")
+                try:
+                    resp_dict = json.loads(content) if isinstance(content, str) else content
+                except Exception:
+                    resp_dict = {"result": content}
+
+                if not isinstance(resp_dict, dict):
+                    resp_dict = {"result": resp_dict}
+
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_function_response(
+                                name=tool_name,
+                                response=resp_dict
+                            )
+                        ]
                     )
                 )
 
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=0.1,
+            tools=tools if tools else None,
         )
 
         response = await client.aio.models.generate_content(
@@ -145,14 +189,20 @@ class LLMProvider:
                 UnifiedToolCall(
                     id=f"call_{idx}",
                     name=call.name,
-                    arguments=dict(call.args) if hasattr(call, "args") else {},
+                    arguments=dict(call.args) if hasattr(call, "args") and call.args else {},
                 )
                 for idx, call in enumerate(response.function_calls)
             ]
 
+        text_content = None
+        try:
+            text_content = response.text
+        except ValueError:
+            text_content = None
+
         unified = UnifiedMessage(
             role="assistant",
-            content=response.text,
+            content=text_content,
             tool_calls=tool_calls_data,
         )
         return unified, response

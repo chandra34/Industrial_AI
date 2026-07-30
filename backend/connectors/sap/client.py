@@ -192,7 +192,8 @@ class SAPClient:
         :raises SAPNotConnectedError: If the client is not connected.
         """
         if not self.is_connected or self._client is None:
-            raise SAPNotConnectedError("SAP client is not connected. Call connect() first.")
+            logger.info("SAP client session inactive. Auto-connecting for CSRF token...")
+            await self.connect()
 
         response = await self._client.get(
             "/sap/opu/odata/sap/",
@@ -234,7 +235,8 @@ class SAPClient:
         :raises SAPAPIError: If the API returns a non-success status.
         """
         if not self.is_connected or self._client is None:
-            raise SAPNotConnectedError("SAP client is not connected. Call connect() first.")
+            logger.info("SAP client session inactive. Auto-connecting to %s...", self.config.base_url)
+            await self.connect()
 
         await self._ensure_valid_token()
 
