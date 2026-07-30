@@ -105,16 +105,21 @@ class LLMProvider:
         messages: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
     ) -> Tuple[UnifiedMessage, Any]:
-        """Execute tool calling step via Google GenAI Client with full context history."""
-        from google.genai import Client, types
+        """Execute tool calling step via Google GenAI Client with full context history using raw REST payloads."""
+        from google.genai import Client
 
         api_key = os.getenv("GEMINI_API_KEY")
         client = Client(api_key=api_key) if api_key else Client()
 
-        contents: List[types.Content] = []
+        contents: List[Dict[str, Any]] = []
         system_instruction = None
 
         for m in messages:
+            # If the history item is already a raw REST dictionary (containing role and parts), pass it directly
+            if isinstance(m, dict) and "role" in m and "parts" in m:
+                contents.append(m)
+                continue
+
             role = m.get("role")
             content = m.get("content", "")
 
@@ -122,17 +127,15 @@ class LLMProvider:
                 system_instruction = content
 
             elif role == "user":
-                contents.append(
-                    types.Content(
-                        role="user",
-                        parts=[types.Part.from_text(text=str(content or ""))]
-                    )
-                )
+                contents.append({
+                    "role": "user",
+                    "parts": [{"text": str(content or "")}]
+                })
 
             elif role == "assistant":
                 parts = []
                 if content:
-                    parts.append(types.Part.from_text(text=str(content)))
+                    parts.append({"text": str(content)})
 
                 # Map history of assistant's tool call requests
                 if m.get("tool_calls"):
@@ -140,13 +143,13 @@ class LLMProvider:
                         tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
                         tc_args = tc.get("arguments") if isinstance(tc, dict) else getattr(tc, "arguments", {})
                         if tc_name:
-                            parts.append(
-                                types.Part.from_function_call(
-                                    name=tc_name,
-                                    args=tc_args or {}
-                                )
-                            )
-                contents.append(types.Content(role="model", parts=parts if parts else [types.Part.from_text(text="")]))
+                            parts.append({
+                                "functionCall": {
+                                    "name": tc_name,
+                                    "args": tc_args or {}
+                                }
+                            })
+                contents.append({"role": "model", "parts": parts if parts else [{"text": ""}]})
 
             elif role == "tool":
                 # Map history of tool response results back to the model
@@ -159,50 +162,71 @@ class LLMProvider:
                 if not isinstance(resp_dict, dict):
                     resp_dict = {"result": resp_dict}
 
-                contents.append(
-                    types.Content(
-                        role="user",
-                        parts=[
-                            types.Part.from_function_response(
-                                name=tool_name,
-                                response=resp_dict
-                            )
-                        ]
-                    )
-                )
+                contents.append({
+                    "role": "user",
+                    "parts": [{
+                        "functionResponse": {
+                            "name": tool_name,
+                            "response": resp_dict
+                        }
+                    }]
+                })
 
-        config = types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=0.1,
-            tools=tools if tools else None,
-        )
+        request_dict = {
+            "contents": contents,
+        }
 
-        response = await client.aio.models.generate_content(
-            model=self.model,
-            contents=contents,
-            config=config,
-        )
+        if tools:
+            func_declarations = []
+            for t in tools:
+                if isinstance(t, dict) and t.get("type") == "function":
+                    fn = t.get("function", {})
+                    func_declarations.append({
+                        "name": fn.get("name"),
+                        "description": fn.get("description"),
+                        "parameters": fn.get("parameters"),
+                    })
+            if func_declarations:
+                request_dict["tools"] = [{"functionDeclarations": func_declarations}]
+
+        # Set configuration options
+        request_dict["generation_config"] = {"temperature": 0.1}
+        if system_instruction:
+            request_dict["system_instruction"] = {
+                "parts": [{"text": system_instruction}]
+            }
+
+        # Run direct REST generateContent request to preserve thoughtSignature metadata
+        path = f"models/{self.model}:generateContent"
+        response_dict = await client._api_client.async_request("POST", path, request_dict)
 
         tool_calls_data = None
-        if hasattr(response, "function_calls") and response.function_calls:
-            tool_calls_data = [
-                UnifiedToolCall(
-                    id=f"call_{idx}",
-                    name=call.name,
-                    arguments=dict(call.args) if hasattr(call, "args") and call.args else {},
-                )
-                for idx, call in enumerate(response.function_calls)
-            ]
-
         text_content = None
-        try:
-            text_content = response.text
-        except ValueError:
-            text_content = None
+
+        candidates = response_dict.get("candidates", [])
+        if candidates:
+            candidate = candidates[0]
+            content_obj = candidate.get("content", {})
+            parts = content_obj.get("parts", [])
+            if parts:
+                for part in parts:
+                    if "text" in part:
+                        text_content = part["text"]
+                    elif "functionCall" in part:
+                        call = part["functionCall"]
+                        if not tool_calls_data:
+                            tool_calls_data = []
+                        tool_calls_data.append(
+                            UnifiedToolCall(
+                                id=call.get("id", "call_0"),
+                                name=call.get("name"),
+                                arguments=call.get("args") or {},
+                            )
+                        )
 
         unified = UnifiedMessage(
             role="assistant",
             content=text_content,
             tool_calls=tool_calls_data,
         )
-        return unified, response
+        return unified, response_dict

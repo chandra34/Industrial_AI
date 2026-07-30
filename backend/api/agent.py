@@ -18,7 +18,7 @@ async def query_agent(
 ) -> AgentResponse:
     """Execute multi-step industrial AI agent reasoning and tool orchestration."""
     try:
-        return await orchestrator.run(payload)
+        return await orchestrator.run(payload, user_id=current_user.uid)
     except Exception as exc:
         logger.exception("Agent orchestrator execution failed")
         raise HTTPException(
