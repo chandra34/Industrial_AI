@@ -14,6 +14,7 @@ from backend.agents.schemas import AgentQueryRequest, AgentResponse, ToolCallRec
 from backend.agents.prompts import SYSTEM_PROMPT
 from backend.agents.tools_registry import ALL_EXECUTABLE_TOOLS, get_openai_tool_definitions
 from backend.agents.llm_provider import LLMProvider
+from backend.utils.guardrails import check_tool_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,28 @@ class IndustrialOrchestrator:
                 t_start = time.time()
                 tool_name = tc.name
                 tool_args = tc.arguments
+
+                # Guardrail: block non-whitelisted (write/mutation) tool calls
+                if not check_tool_allowed(tool_name):
+                    result = {
+                        "error": f"Guardrail: Tool '{tool_name}' is not permitted. Only read-only diagnostic tools are allowed."
+                    }
+                    t_elapsed = time.time() - t_start
+                    tool_records.append(
+                        ToolCallRecord(
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            result=result,
+                            execution_time_seconds=round(t_elapsed, 4),
+                        )
+                    )
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "name": tc.name,
+                        "content": json.dumps(result),
+                    })
+                    continue
 
                 logger.info("Executing tool '%s' with args %s", tool_name, tool_args)
 
