@@ -12,7 +12,7 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient
+from backend.connectors.sap.client import SAPClient, escape_odata_val
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,14 @@ async def get_inspection_lots(
     logger.info("QM Tool: get_inspection_lots(material=%s, batch=%s, plant=%s)", material_id, batch_id, plant_id)
     filters = []
     if material_id:
-        filters.append(f"Material eq '{material_id}'")
+        escaped_material_id = escape_odata_val(material_id)
+        filters.append(f"Material eq '{escaped_material_id}'")
     if batch_id:
-        filters.append(f"Batch eq '{batch_id}'")
+        escaped_batch_id = escape_odata_val(batch_id)
+        filters.append(f"Batch eq '{escaped_batch_id}'")
     if plant_id:
-        filters.append(f"Plant eq '{plant_id}'")
+        escaped_plant_id = escape_odata_val(plant_id)
+        filters.append(f"Plant eq '{escaped_plant_id}'")
 
     filter_expr = " and ".join(filters) if filters else None
 
@@ -76,9 +79,11 @@ async def get_quality_notifications(
     logger.info("QM Tool: get_quality_notifications(plant=%s, type=%s, top=%d)", plant_id, notification_type, top)
     filters = []
     if plant_id:
-        filters.append(f"Plant eq '{plant_id}'")
+        escaped_plant_id = escape_odata_val(plant_id)
+        filters.append(f"Plant eq '{escaped_plant_id}'")
     if notification_type:
-        filters.append(f"NotificationType eq '{notification_type}'")
+        escaped_notification_type = escape_odata_val(notification_type)
+        filters.append(f"NotificationType eq '{escaped_notification_type}'")
 
     filter_expr = " and ".join(filters) if filters else None
 

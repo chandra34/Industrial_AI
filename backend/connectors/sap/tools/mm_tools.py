@@ -13,7 +13,7 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient
+from backend.connectors.sap.client import SAPClient, escape_odata_val
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,11 @@ async def get_material_master(
     :return: Material master data dictionary.
     """
     logger.info("MM Tool: get_material_master(material_id=%s)", material_id)
+    escaped_material_id = escape_odata_val(material_id)
     result = await client.execute_odata_query(
         service_path=PRODUCT_SERVICE,
         entity_set="A_Product",
-        key=f"'{material_id}'",
+        key=f"'{escaped_material_id}'",
     )
     return result.get("d", result)
 
@@ -55,10 +56,12 @@ async def check_material_stock(
     :return: List of stock position records.
     """
     logger.info("MM Tool: check_material_stock(material=%s, plant=%s)", material_id, plant_id)
+    escaped_material_id = escape_odata_val(material_id)
+    escaped_plant_id = escape_odata_val(plant_id)
     result = await client.execute_odata_query(
         service_path=MATERIAL_STOCK_SERVICE,
         entity_set="A_MatlStkInAcctMod",
-        filter_expr=f"Material eq '{material_id}' and Plant eq '{plant_id}'",
+        filter_expr=f"Material eq '{escaped_material_id}' and Plant eq '{escaped_plant_id}'",
     )
     return result.get("d", {}).get("results", [])
 
@@ -79,10 +82,12 @@ async def get_bill_of_materials(
     :return: List of BOM item records.
     """
     logger.info("MM Tool: get_bill_of_materials(material=%s, plant=%s)", material_id, plant_id)
+    escaped_material_id = escape_odata_val(material_id)
+    escaped_plant_id = escape_odata_val(plant_id)
     result = await client.execute_odata_query(
         service_path=BOM_SERVICE,
         entity_set="MaterialBOMItem",
-        filter_expr=f"Material eq '{material_id}' and Plant eq '{plant_id}'",
+        filter_expr=f"Material eq '{escaped_material_id}' and Plant eq '{escaped_plant_id}'",
         top=top,
     )
     return result.get("d", {}).get("results", [])
