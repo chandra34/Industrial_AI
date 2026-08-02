@@ -32,6 +32,11 @@ from backend.connectors.sap.exceptions import (
 logger = logging.getLogger(__name__)
 
 
+def escape_odata_val(val: str) -> str:
+    """Escape single quotes in values for OData filter expressions by doubling them."""
+    return val.replace("'", "''")
+
+
 class SAPClient:
     """Manages async HTTP connection lifecycle to an SAP ERP OData API."""
 

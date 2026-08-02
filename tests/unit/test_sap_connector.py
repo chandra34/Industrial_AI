@@ -25,8 +25,12 @@ from backend.connectors.sap.tools import (
 
 # --- Config Tests ---
 
-def test_sap_config_defaults():
+def test_sap_config_defaults(monkeypatch):
     """Verify SAPConfig loads with sensible defaults."""
+    monkeypatch.delenv("SAP_AUTH_TYPE", raising=False)
+    monkeypatch.delenv("SAP_SAP_CLIENT", raising=False)
+    monkeypatch.delenv("SAP_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("SAP_MAX_RETRIES", raising=False)
     config = SAPConfig(_env_file=None)
     assert config.auth_type == "basic"
     assert config.sap_client == "100"
@@ -88,6 +92,8 @@ async def test_sap_client_context_manager():
 async def test_sap_odata_query_not_connected():
     """Verify SAPNotConnectedError when querying without connecting first."""
     client = SAPClient()
+    # Mock connect to do nothing, leaving self._client as None
+    client.connect = AsyncMock()
     with pytest.raises(SAPNotConnectedError):
         await client.execute_odata_query(
             service_path="/sap/opu/odata/sap/API_EQUIPMENT",
@@ -183,3 +189,40 @@ async def test_pm_tool_get_equipment_details():
         data = await get_equipment_details(client, "10004921")
         assert data["Equipment"] == "10004921"
         assert data["EquipmentName"] == "Pump"
+
+
+def test_escape_odata_val():
+    """Verify that escape_odata_val doubles single quotes correctly."""
+    from backend.connectors.sap.client import escape_odata_val
+    assert escape_odata_val("SKF-6214") == "SKF-6214"
+    assert escape_odata_val("MAT'001") == "MAT''001"
+    assert escape_odata_val("O'NEILL") == "O''NEILL"
+    assert escape_odata_val("VALVE_3/8'") == "VALVE_3/8''"
+
+
+@pytest.mark.asyncio
+async def test_pm_tool_quote_escaping():
+    """Verify that pm_tools functions escape quotes in parameters before executing OData query."""
+    config = SAPConfig(
+        base_url="https://mock-sap.example.com",
+        auth_type="basic",
+        username="user",
+        password="pass",
+        _env_file=None,
+    )
+    async with SAPClient(config) as client:
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"d": {"results": []}}
+        mock_response.content = b'{"d":{"results":[]}}'
+        mock_response.text = '{"d":{"results":[]}}'
+        client._client.get = AsyncMock(return_value=mock_response)
+
+        # Call tool with an apostrophe in parameter
+        await check_material_stock(client, "MAT'001", "PL'10")
+
+        # Verify that execute_odata_query was called with escaped single quotes
+        client._client.get.assert_called_once()
+        args, kwargs = client._client.get.call_args
+        params = kwargs.get("params", {})
+        assert params.get("$filter") == "Material eq 'MAT''001' and Plant eq 'PL''10'"

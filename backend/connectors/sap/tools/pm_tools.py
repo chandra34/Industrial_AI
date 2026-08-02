@@ -13,7 +13,7 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient
+from backend.connectors.sap.client import SAPClient, escape_odata_val
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,11 @@ async def get_equipment_details(
     :return: Equipment master data dictionary.
     """
     logger.info("PM Tool: get_equipment_details(equipment_id=%s)", equipment_id)
+    escaped_equipment_id = escape_odata_val(equipment_id)
     result = await client.execute_odata_query(
         service_path=EQUIPMENT_SERVICE,
         entity_set="Equipment",
-        key=f"'{equipment_id}'",
+        key=f"'{escaped_equipment_id}'",
     )
     return result.get("d", result)
 
@@ -65,11 +66,14 @@ async def get_maintenance_notifications(
     )
     filters = []
     if plant_id:
-        filters.append(f"MaintenancePlant eq '{plant_id}'")
+        escaped_plant_id = escape_odata_val(plant_id)
+        filters.append(f"MaintenancePlant eq '{escaped_plant_id}'")
     if equipment_id:
-        filters.append(f"Equipment eq '{equipment_id}'")
+        escaped_equipment_id = escape_odata_val(equipment_id)
+        filters.append(f"Equipment eq '{escaped_equipment_id}'")
     if notification_type:
-        filters.append(f"NotificationType eq '{notification_type}'")
+        escaped_notification_type = escape_odata_val(notification_type)
+        filters.append(f"NotificationType eq '{escaped_notification_type}'")
 
     filter_expr = " and ".join(filters) if filters else None
 
@@ -103,9 +107,11 @@ async def get_work_orders(
     logger.info("PM Tool: get_work_orders(plant=%s, status=%s, top=%d)", plant_id, system_status, top)
     filters = []
     if plant_id:
-        filters.append(f"MaintenancePlanningPlant eq '{plant_id}'")
+        escaped_plant_id = escape_odata_val(plant_id)
+        filters.append(f"MaintenancePlanningPlant eq '{escaped_plant_id}'")
     if order_type:
-        filters.append(f"MaintenanceOrderType eq '{order_type}'")
+        escaped_order_type = escape_odata_val(order_type)
+        filters.append(f"MaintenanceOrderType eq '{escaped_order_type}'")
     if system_status:
         filters.append(f"MaintOrdBasicStartDate ne null")
 
