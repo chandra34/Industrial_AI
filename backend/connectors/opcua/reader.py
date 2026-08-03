@@ -3,11 +3,13 @@ OPC UA Reader for querying node values and metadata from an OPC UA server.
 """
 
 import logging
-from typing import Any, Dict, List
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 from backend.connectors.opcua.connection import OPCUAClient
 from backend.connectors.opcua.exceptions import OPCUANotConnectedError
 
 logger = logging.getLogger(__name__)
+
 
 
 def _clean_node_id(node_id: str) -> str:
@@ -167,4 +169,83 @@ class OPCUAReader:
         except Exception as e:
             logger.warning("Error collecting children for node %s: %s", str(node.nodeid), e)
         return sensor_nodes
+
+    async def read_node_history(
+        self,
+        node_id: str,
+        start_time_iso: Optional[str] = None,
+        end_time_iso: Optional[str] = None,
+        num_values: int = 50,
+    ) -> Dict[str, Any]:
+        """Read past historical raw values for a node from OPC UA server buffer (IEC 62541-11)."""
+        await self._ensure_connected()
+        node_id = _clean_node_id(node_id)
+        node = self.client.raw_client.get_node(node_id)
+
+        now = datetime.now(timezone.utc)
+        try:
+            start_dt = datetime.fromisoformat(start_time_iso) if start_time_iso else now - timedelta(hours=1)
+        except Exception:
+            start_dt = now - timedelta(hours=1)
+
+        try:
+            end_dt = datetime.fromisoformat(end_time_iso) if end_time_iso else now
+        except Exception:
+            end_dt = now
+
+        try:
+            history_data = await node.read_raw_history(start_dt, end_dt, numvalues=num_values)
+            formatted_history = []
+            for datavalue in (history_data or []):
+                val = datavalue.Value.Value if datavalue and datavalue.Value else None
+                if val is not None and not isinstance(val, (int, float, str, bool, list, dict)):
+                    val = str(val)
+                formatted_history.append({
+                    "timestamp": str(getattr(datavalue, "SourceTimestamp", None) or getattr(datavalue, "ServerTimestamp", "N/A")),
+                    "value": val,
+                    "status": str(getattr(datavalue, "StatusCode", "Good")),
+                })
+            return {
+                "node_id": node_id,
+                "record_count": len(formatted_history),
+                "history": formatted_history,
+            }
+        except Exception as e:
+            logger.warning("Failed to read history for node %s: %s", node_id, e)
+            return {"node_id": node_id, "record_count": 0, "history": [], "note": f"Historical reading note: {e}"}
+
+    async def get_alarm_events(
+        self,
+        machine_node_id: str,
+        num_events: int = 10,
+    ) -> Dict[str, Any]:
+        """Read recent trip alarm snapshots and condition events for a machine node (IEC 62541-9)."""
+        await self._ensure_connected()
+        machine_node_id = _clean_node_id(machine_node_id)
+        node = self.client.raw_client.get_node(machine_node_id)
+
+        try:
+            event_records = await node.read_event_history(num_events=num_events)
+            formatted_events = []
+            for ev in (event_records or []):
+                formatted_events.append({
+                    "time": str(getattr(ev, "Time", "N/A")),
+                    "event_type": str(getattr(ev, "EventType", "AlarmCondition")),
+                    "severity": getattr(ev, "Severity", 500),
+                    "message": str(getattr(ev, "Message", "Trip Alarm Triggered")),
+                })
+            return {
+                "machine_node_id": machine_node_id,
+                "event_count": len(formatted_events),
+                "events": formatted_events,
+            }
+        except Exception as e:
+            logger.warning("Failed to read alarm events for %s: %s", machine_node_id, e)
+            return {
+                "machine_node_id": machine_node_id,
+                "event_count": 0,
+                "events": [],
+                "note": f"No active alarm log found under node: {e}",
+            }
+
 
