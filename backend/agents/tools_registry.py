@@ -83,8 +83,24 @@ async def search_opcua_nodes(
     start_node_id: Optional[str] = None,
     opcua_client: Optional[OPCUAClient] = None,
 ) -> List[Dict[str, Any]]:
-    """Search OPC UA node names matching a search keyword (e.g. 'vibration', 'temperature')."""
+    """Search OPC UA nodes by keyword. Uses fast local tag catalog first, falls back to live browse."""
     logger.info("OPC UA Tool: search_opcua_nodes(search_term='%s')", search_term)
+
+    # 1. Fast local catalog search (< 5ms)
+    try:
+        from backend.connectors.opcua.indexer import search_local_tag_catalog
+        from backend.database.session import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as db:
+            results = await search_local_tag_catalog(db, search_term)
+            if results:
+                return _to_json_safe(results)
+            else:
+                logger.info("Tag catalog returned 0 results for '%s'. Catalog may be empty.", search_term)
+    except Exception as e:
+        logger.warning("Local tag catalog search failed, falling back to live browse: %s", e)
+
+    # 2. Fallback: live 1-level OPC UA browse (slow, but works without catalog)
     if opcua_client:
         try:
             browser = OPCUABrowser(opcua_client)
@@ -93,6 +109,7 @@ async def search_opcua_nodes(
         except Exception as e:
             logger.error("OPC UA search_nodes error: %s", e)
             return [{"error": f"Failed to search OPC UA nodes: {e}"}]
+
     return [{"node_id": f"ns=2;s={search_term}", "browse_name": f"{search_term}_Sensor", "node_class": "Variable"}]
 
 
@@ -137,6 +154,31 @@ async def read_opcua_node_details(
     }
 
 
+async def read_machine_telemetry(
+    node_id: str,
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Read ALL live sensor values (temperature, pressure, status, etc.) for a machine in 1 call."""
+    logger.info("OPC UA Tool: read_machine_telemetry(node_id='%s')", node_id)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.read_machine_telemetry(node_id)
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA read_machine_telemetry error: %s", e)
+            return {"machine_node_id": node_id, "error": f"Failed to read machine telemetry: {e}"}
+    return {
+        "machine_node_id": node_id,
+        "sensor_count": 3,
+        "telemetry": {
+            "Temperature": {"node_id": f"{node_id}.Temp", "value": 78.4},
+            "Pressure": {"node_id": f"{node_id}.Press", "value": 4.2},
+            "Status": {"node_id": f"{node_id}.Status", "value": "Running"},
+        },
+    }
+
+
 # Combined dictionary of all executable tool functions across SAP, OPC UA, and Vector RAG
 ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     **ALL_SAP_TOOLS,
@@ -145,7 +187,9 @@ ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     "search_opcua_nodes": search_opcua_nodes,
     "read_opcua_node_value": read_opcua_node_value,
     "read_opcua_node_details": read_opcua_node_details,
+    "read_machine_telemetry": read_machine_telemetry,
 }
+
 
 
 def get_openai_tool_definitions() -> List[Dict[str, Any]]:
@@ -376,4 +420,19 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_machine_telemetry",
+                "description": "Read ALL live sensor values (temperature, pressure, vibration, status, etc.) for a machine using its parent OPC UA Object node ID. Use this when the user asks about overall machine health, working condition, or status. Returns all child sensor readings in one call.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string", "description": "OPC UA Object Node ID of the machine (e.g. 'ns=2;s=Line1.Pump01')"},
+                    },
+                    "required": ["node_id"],
+                },
+            },
+        },
     ]
+

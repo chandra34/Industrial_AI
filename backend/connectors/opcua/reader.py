@@ -71,3 +71,77 @@ class OPCUAReader:
         except Exception as e:
             logger.error(f"Error reading node details for {node_id}: {e}", exc_info=True)
             raise
+
+    async def read_machine_telemetry(self, machine_node_id: str) -> Dict[str, Any]:
+        """Read ALL live sensor values for a machine by its parent Object node ID.
+
+        Recursively discovers all child Variable nodes (handles flat and nested
+        sub-folder structures) and batch-reads their current values.
+
+        :param machine_node_id: OPC UA Node ID of the machine Object (e.g. 'ns=2;s=Line1.Pump01').
+        :return: Dictionary with machine_node_id, sensor_count, and telemetry readings.
+        """
+        await self._ensure_connected()
+
+        logger.info("Reading full machine telemetry for node: %s", machine_node_id)
+        machine_node = self.client.raw_client.get_node(machine_node_id)
+
+        # Recursively find all child Variable nodes
+        sensor_nodes = await self._collect_variable_children(machine_node)
+
+        if not sensor_nodes:
+            return {
+                "machine_node_id": machine_node_id,
+                "sensor_count": 0,
+                "telemetry": {},
+                "note": "No sensor variables found under this node.",
+            }
+
+        # Batch read all sensor values
+        telemetry: Dict[str, Any] = {}
+        for sensor_node in sensor_nodes:
+            sensor_id = str(sensor_node.nodeid)
+            try:
+                browse_name = await sensor_node.read_browse_name()
+                name = browse_name.Name if hasattr(browse_name, "Name") else str(browse_name)
+                value = await sensor_node.read_value()
+                if value is not None and not isinstance(value, (int, float, str, bool, list, dict)):
+                    value = str(value)
+                telemetry[name] = {
+                    "node_id": sensor_id,
+                    "value": value,
+                }
+            except Exception as e:
+                logger.warning("Failed to read sensor %s: %s", sensor_id, e)
+                telemetry[sensor_id] = {"node_id": sensor_id, "error": str(e)}
+
+        return {
+            "machine_node_id": machine_node_id,
+            "sensor_count": len(telemetry),
+            "telemetry": telemetry,
+        }
+
+    async def _collect_variable_children(self, node: Any) -> list:
+        """Recursively collect all Variable (sensor) nodes under a given node.
+
+        Handles both flat structures (sensors directly under machine) and
+        nested sub-folder structures (sensors inside grouped folders).
+
+        :param node: asyncua Node object to search under.
+        :return: List of asyncua Node objects with NodeClass == Variable.
+        """
+        sensor_nodes = []
+        try:
+            children = await node.get_children()
+            for child in children:
+                node_class = str(await child.read_node_class())
+                if "Variable" in node_class:
+                    sensor_nodes.append(child)
+                elif "Object" in node_class or "Folder" in node_class:
+                    # Recurse into sub-folders
+                    sub_sensors = await self._collect_variable_children(child)
+                    sensor_nodes.extend(sub_sensors)
+        except Exception as e:
+            logger.warning("Error collecting children for node %s: %s", str(node.nodeid), e)
+        return sensor_nodes
+

@@ -110,9 +110,11 @@ ALLOWED_TOOLS: frozenset[str] = frozenset({
     "search_opcua_nodes",
     "read_opcua_node_value",
     "read_opcua_node_details",
+    "read_machine_telemetry",
     # RAG Vector DB (read-only search)
     "search_technical_manuals",
 })
+
 
 
 def check_tool_allowed(tool_name: str) -> bool:

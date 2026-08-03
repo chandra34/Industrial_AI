@@ -317,6 +317,18 @@ body.dark-theme [class*="settingsValue"] {
 body.dark-theme [class*="settingsSlider"] {
   background: #2a2d45;
 }
+body.dark-theme [class*="syncButton"] {
+  background: var(--accent);
+}
+body.dark-theme [class*="syncButton"]:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+body.dark-theme [class*="syncError"] {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
 
 /* --- Upload Modal --- */
 body.dark-theme .upload-modal {

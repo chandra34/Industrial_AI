@@ -37,3 +37,21 @@ class IngestionJob(Base):
     error = Column(Text, nullable=True, doc="Error message on failure")
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class OPCUATagCatalog(Base):
+    """Cached OPC UA address space tag catalog for fast agent lookups."""
+
+    __tablename__ = "opcua_tag_catalog"
+
+    node_id = Column(String, primary_key=True, doc="OPC UA Node ID (e.g. 'ns=2;s=Line1.Pump01.Temp')")
+    browse_name = Column(String, nullable=False, index=True, doc="OPC UA browse name (e.g. 'Temperature')")
+    display_name = Column(String, nullable=True, index=True, doc="Human-readable name (e.g. 'Line 1 Pump Temperature')")
+    full_path = Column(String, nullable=False, index=True, doc="Full hierarchy path (e.g. 'Objects > Line_1 > Pump_01 > Temperature')")
+    node_class = Column(String, nullable=False, doc="OPC UA NodeClass: 'Variable' (sensors) or 'Object' (machines/folders)")
+    parent_node_id = Column(String, nullable=True, doc="Parent machine/folder node ID")
+    sap_equipment_id = Column(String, nullable=True, index=True, doc="Cross-reference to SAP Equipment Master ID")
+    data_type = Column(String, nullable=True, doc="OPC UA data type (e.g. 'Double', 'Boolean', 'String')")
+    unit = Column(String, nullable=True, doc="Engineering unit (e.g. '°C', 'bar', 'RPM')")
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+

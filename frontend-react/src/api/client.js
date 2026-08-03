@@ -219,3 +219,26 @@ export async function queryAgent(query, userRole = 'operator', plantId = null, m
   });
 }
 
+/**
+ * Triggers an on-demand OPC UA address space crawl in the backend.
+ * The crawl runs as a background task and the API responds immediately.
+ *
+ * @async
+ * @returns {Promise<{status: string, message: string}>} Confirmation that sync has started.
+ */
+export async function reindexOpcuaCatalog() {
+  return request('POST', '/opcua/reindex');
+}
+
+/**
+ * Fetches the current OPC UA tag catalog status (total indexed tags and last sync time).
+ *
+ * @async
+ * @returns {Promise<{total_tags: number, last_updated: string|null}>} Catalog status object.
+ */
+export async function getOpcuaCatalogStatus() {
+  return request('GET', '/opcua/status');
+}
+
+
+
