@@ -10,6 +10,22 @@ from backend.connectors.opcua.exceptions import OPCUANotConnectedError
 logger = logging.getLogger(__name__)
 
 
+def _clean_node_id(node_id: str) -> str:
+    """Clean ExpandedNodeId representation to a parseable string format."""
+    import re
+    if "ExpandedNodeId" in node_id:
+        ns_match = re.search(r"NamespaceIndex=(\d+)", node_id)
+        id_match = re.search(r"Identifier=([^,\)]+)", node_id)
+        if ns_match and id_match:
+            ns = ns_match.group(1)
+            ident = id_match.group(1).strip("'\"")
+            if ident.isdigit():
+                return f"ns={ns};i={ident}"
+            else:
+                return f"ns={ns};s={ident}"
+    return node_id
+
+
 class OPCUAReader:
     """Reads values, data types, and timestamps from OPC UA nodes."""
 
@@ -26,6 +42,7 @@ class OPCUAReader:
         """Read current value of a single node by node ID."""
         await self._ensure_connected()
 
+        node_id = _clean_node_id(node_id)
         logger.debug("Reading value for node %s", node_id)
         try:
             node = self.client.raw_client.get_node(node_id)
@@ -36,6 +53,7 @@ class OPCUAReader:
         except Exception as e:
             logger.error("Error reading node value for %s: %s", node_id, e, exc_info=True)
             raise
+
 
     async def read_multiple_nodes(self, node_ids: List[str]) -> Dict[str, Any]:
         """Read current values for a list of node IDs."""
@@ -53,6 +71,7 @@ class OPCUAReader:
         """Read detailed metadata of a node including value, data type, and timestamps."""
         await self._ensure_connected()
 
+        node_id = _clean_node_id(node_id)
         try:
             node = self.client.raw_client.get_node(node_id)
             data_value = await node.read_data_value()
@@ -83,8 +102,10 @@ class OPCUAReader:
         """
         await self._ensure_connected()
 
+        machine_node_id = _clean_node_id(machine_node_id)
         logger.info("Reading full machine telemetry for node: %s", machine_node_id)
         machine_node = self.client.raw_client.get_node(machine_node_id)
+
 
         # Recursively find all child Variable nodes
         sensor_nodes = await self._collect_variable_children(machine_node)
@@ -134,13 +155,15 @@ class OPCUAReader:
         try:
             children = await node.get_children()
             for child in children:
-                node_class = str(await child.read_node_class())
+                node_class_obj = await child.read_node_class()
+                node_class = getattr(node_class_obj, "name", str(node_class_obj))
                 if "Variable" in node_class:
                     sensor_nodes.append(child)
                 elif "Object" in node_class or "Folder" in node_class:
                     # Recurse into sub-folders
                     sub_sensors = await self._collect_variable_children(child)
                     sensor_nodes.extend(sub_sensors)
+
         except Exception as e:
             logger.warning("Error collecting children for node %s: %s", str(node.nodeid), e)
         return sensor_nodes

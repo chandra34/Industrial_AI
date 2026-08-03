@@ -31,7 +31,12 @@ async def search_local_tag_catalog(
     :param top_k: Maximum number of results to return.
     :return: List of matching tag dictionaries with node_id, browse_name, full_path, node_class.
     """
-    keywords = search_term.lower().split()
+    stop_words = {"tag", "tags", "in", "the", "of", "a", "an", "for", "val", "value", "node", "nodes", "is", "current", "live"}
+    raw_keywords = search_term.lower().split()
+    keywords = [kw for kw in raw_keywords if kw not in stop_words]
+    if not keywords:
+        keywords = raw_keywords
+
     if not keywords:
         return []
 
@@ -44,8 +49,10 @@ async def search_local_tag_catalog(
                 func.lower(OPCUATagCatalog.display_name).like(pattern),
                 func.lower(OPCUATagCatalog.full_path).like(pattern),
                 func.lower(OPCUATagCatalog.browse_name).like(pattern),
+                func.lower(OPCUATagCatalog.node_id).like(pattern),
             )
         )
+
 
     stmt = (
         select(OPCUATagCatalog)

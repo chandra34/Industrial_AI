@@ -10,6 +10,22 @@ from backend.connectors.opcua.exceptions import OPCUANotConnectedError
 logger = logging.getLogger(__name__)
 
 
+def _clean_node_id(node_id: str) -> str:
+    """Clean ExpandedNodeId representation to a parseable string format."""
+    import re
+    if "ExpandedNodeId" in node_id:
+        ns_match = re.search(r"NamespaceIndex=(\d+)", node_id)
+        id_match = re.search(r"Identifier=([^,\)]+)", node_id)
+        if ns_match and id_match:
+            ns = ns_match.group(1)
+            ident = id_match.group(1).strip("'\"")
+            if ident.isdigit():
+                return f"ns={ns};i={ident}"
+            else:
+                return f"ns={ns};s={ident}"
+    return node_id
+
+
 class OPCUABrowser:
     """Discovers nodes and browses node hierarchy on an OPC UA server."""
 
@@ -39,7 +55,9 @@ class OPCUABrowser:
         nodes_info: List[Dict[str, Any]] = []
         try:
             if node_id:
+                node_id = _clean_node_id(node_id)
                 parent_node = self.client.raw_client.get_node(node_id)
+
             else:
                 parent_node = self.client.raw_client.get_objects_node()
 
