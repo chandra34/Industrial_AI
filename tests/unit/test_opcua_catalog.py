@@ -94,6 +94,25 @@ async def test_search_local_tag_catalog():
 
 
 def test_guardrails_read_machine_telemetry():
-    """Verify read_machine_telemetry is whitelisted in guardrails."""
+    """Verify read_machine_telemetry and new IEC 62541 tools are whitelisted in guardrails."""
     assert check_tool_allowed("read_machine_telemetry") is True
     assert check_tool_allowed("search_opcua_nodes") is True
+    assert check_tool_allowed("read_opcua_node_history") is True
+    assert check_tool_allowed("get_opcua_alarm_events") is True
+
+
+@pytest.mark.asyncio
+async def test_opcua_history_and_alarm_tools_mock():
+    """Verify read_opcua_node_history and get_opcua_alarm_events tool signatures."""
+    from backend.agents.tools_registry import read_opcua_node_history, get_opcua_alarm_events
+
+    history_res = await read_opcua_node_history(node_id="ns=3;i=1003")
+    assert history_res["node_id"] == "ns=3;i=1003"
+    assert "history" in history_res
+    assert history_res["record_count"] >= 1
+
+    alarm_res = await get_opcua_alarm_events(machine_node_id="ns=3;s=85/0:Simulation")
+    assert alarm_res["machine_node_id"] == "ns=3;s=85/0:Simulation"
+    assert "events" in alarm_res
+    assert alarm_res["event_count"] >= 1
+

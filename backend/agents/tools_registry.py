@@ -179,6 +179,67 @@ async def read_machine_telemetry(
     }
 
 
+async def read_opcua_node_history(
+    node_id: str,
+    start_time_iso: Optional[str] = None,
+    end_time_iso: Optional[str] = None,
+    num_values: int = 50,
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Read past time-series historical values for a node from OPC UA server buffer (IEC 62541-11)."""
+    logger.info("OPC UA Tool: read_opcua_node_history(node_id='%s')", node_id)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.read_node_history(
+                node_id=node_id,
+                start_time_iso=start_time_iso,
+                end_time_iso=end_time_iso,
+                num_values=num_values,
+            )
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA read_opcua_node_history error: %s", e)
+            return {"node_id": node_id, "error": f"Failed to read OPC UA node history: {e}"}
+    return {
+        "node_id": node_id,
+        "record_count": 2,
+        "history": [
+            {"timestamp": "2026-08-03T18:00:00Z", "value": 85.0, "status": "Good"},
+            {"timestamp": "2026-08-03T18:30:00Z", "value": 118.4, "status": "Good"},
+        ],
+    }
+
+
+async def get_opcua_alarm_events(
+    machine_node_id: str,
+    num_events: int = 10,
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Read recent trip alarm snapshots and condition events for a machine node (IEC 62541-9)."""
+    logger.info("OPC UA Tool: get_opcua_alarm_events(machine_node_id='%s')", machine_node_id)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.get_alarm_events(machine_node_id=machine_node_id, num_events=num_events)
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA get_opcua_alarm_events error: %s", e)
+            return {"machine_node_id": machine_node_id, "error": f"Failed to read alarm events: {e}"}
+    return {
+        "machine_node_id": machine_node_id,
+        "event_count": 1,
+        "events": [
+            {
+                "time": "2026-08-03T18:40:00Z",
+                "event_type": "HighTemperatureAlarm",
+                "severity": 900,
+                "message": "High Temperature Trip Triggered (120°C)",
+            }
+        ],
+    }
+
+
 # Combined dictionary of all executable tool functions across SAP, OPC UA, and Vector RAG
 ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     **ALL_SAP_TOOLS,
@@ -188,7 +249,10 @@ ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     "read_opcua_node_value": read_opcua_node_value,
     "read_opcua_node_details": read_opcua_node_details,
     "read_machine_telemetry": read_machine_telemetry,
+    "read_opcua_node_history": read_opcua_node_history,
+    "get_opcua_alarm_events": get_opcua_alarm_events,
 }
+
 
 
 
@@ -434,5 +498,38 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_opcua_node_history",
+                "description": "Read past time-series historical raw values for an OPC UA node (IEC 62541-11 Historical Access). Use when the user asks about past values, trends, peaks, or historical ranges (e.g. 'what was the temperature between 2 PM and 4 PM?').",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string", "description": "OPC UA Node ID (e.g. 'ns=3;i=1003')"},
+                        "start_time_iso": {"type": "string", "description": "Optional ISO start timestamp (e.g. '2026-08-03T14:00:00Z')"},
+                        "end_time_iso": {"type": "string", "description": "Optional ISO end timestamp (e.g. '2026-08-03T16:00:00Z')"},
+                        "num_values": {"type": "integer", "description": "Max historical records to return (default 50)"},
+                    },
+                    "required": ["node_id"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_opcua_alarm_events",
+                "description": "Read recent trip alarm snapshots and condition events for a machine node (IEC 62541-9 Alarms & Conditions). Use when the user asks why a machine tripped, went offline, or triggered an alarm.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "machine_node_id": {"type": "string", "description": "OPC UA Machine or Folder Node ID (e.g. 'ns=3;s=85/0:Simulation')"},
+                        "num_events": {"type": "integer", "description": "Max recent alarm events to return (default 10)"},
+                    },
+                    "required": ["machine_node_id"],
+                },
+            },
+        },
     ]
+
 
