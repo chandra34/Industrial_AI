@@ -22,7 +22,7 @@ services:
       - DATABASE_URL=sqlite:////app/db/metadata.db
     volumes:
       - shared_uploads:/app/backend/uploads
-      - shared_db:/app/db
+      - ./metadata.db:/app/db/metadata.db
 
   worker:
     build: .
@@ -37,7 +37,8 @@ services:
       - DATABASE_URL=sqlite:////app/db/metadata.db
     volumes:
       - shared_uploads:/app/backend/uploads
-      - shared_db:/app/db
+      - ./metadata.db:/app/db/metadata.db
+
 
 volumes:
   redis_data:

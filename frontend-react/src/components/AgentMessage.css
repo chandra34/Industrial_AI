@@ -120,6 +120,10 @@
   border-left-color: #8b5cf6;
 }
 
+.agent-tool-card.source-opcua {
+  border-left-color: #10b981;
+}
+
 .agent-tool-header {
   display: flex;
   justify-content: space-between;
@@ -145,6 +149,12 @@
   background: rgba(139, 92, 246, 0.12);
   color: #7c3aed;
 }
+
+.agent-tool-badge.source-opcua {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
 
 .agent-tool-time {
   font-size: 11px;
