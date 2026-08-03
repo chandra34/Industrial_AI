@@ -54,16 +54,21 @@ class OPCUATagCrawler:
             accumulator=tags,
         )
 
-        # Clear old catalog and insert fresh tags
+        # Clear old catalog and insert fresh tags (deduplicated by node_id)
         await db.execute(delete(OPCUATagCatalog))
         now = datetime.now(timezone.utc)
+        unique_tags: Dict[str, Dict[str, Any]] = {}
         for tag in tags:
+            unique_tags[tag["node_id"]] = tag
+
+        for tag in unique_tags.values():
             tag["updated_at"] = now
             db.add(OPCUATagCatalog(**tag))
         await db.commit()
 
-        logger.info("Successfully indexed %d OPC UA tags into local catalog.", len(tags))
-        return len(tags)
+        logger.info("Successfully indexed %d OPC UA tags into local catalog.", len(unique_tags))
+        return len(unique_tags)
+
 
     async def _crawl_node(
         self,
@@ -98,8 +103,16 @@ class OPCUATagCrawler:
                 child_node_id = str(child.nodeid)
                 browse_name_obj = await child.read_browse_name()
                 browse_name = browse_name_obj.Name
-                node_class = str(await child.read_node_class())
+
+                # Skip internal OPC UA protocol diagnostic folder (Objects > Server)
+                if depth == 1 and browse_name == "Server":
+                    logger.debug("Skipping internal OPC UA system folder: Objects > Server")
+                    continue
+
+                node_class_obj = await child.read_node_class()
+                node_class = getattr(node_class_obj, "name", str(node_class_obj))
                 child_path = f"{path} > {browse_name}"
+
 
                 # Build human-readable display name from path segments
                 display_name = " ".join(
@@ -116,6 +129,7 @@ class OPCUATagCrawler:
                     "node_class": "Variable" if "Variable" in node_class else "Object",
                     "parent_node_id": node_id_str,
                 }
+
 
                 if "Variable" in node_class:
                     accumulator.append(tag_record)
