@@ -8,11 +8,17 @@ import './AgentMessage.css';
  * @returns {{label: string, icon: string, className: string}} Source display metadata.
  */
 function getToolSource(toolName) {
-  if (toolName === 'search_technical_manuals') {
+  if (!toolName) return { label: 'SAP ERP', icon: '⚙️', className: 'source-sap' };
+  const lowerName = toolName.toLowerCase();
+  if (lowerName.includes('opcua') || lowerName.includes('telemetry') || lowerName.includes('alarm')) {
+    return { label: 'OPC UA', icon: '⚡', className: 'source-opcua' };
+  }
+  if (lowerName === 'search_technical_manuals') {
     return { label: 'Vector RAG', icon: '📖', className: 'source-rag' };
   }
   return { label: 'SAP ERP', icon: '⚙️', className: 'source-sap' };
 }
+
 
 /**
  * Formats a Date object or date-string to localized 12-hour AM/PM format.
