@@ -80,6 +80,9 @@ const PDFFileIcon = () => (
  */
 export default function UploadModal({ isOpen, onClose, onUploaded }) {
   const [file, setFile] = useState(null);
+  const [documentType, setDocumentType] = useState('');
+  const [manufacturer, setManufacturer] = useState('');
+  const [equipment, setEquipment] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -114,7 +117,12 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     activeSessionRef.current = sessionId;
 
     try {
-      const uploadResponse = await uploadPDF(file);
+      const metadataPayload = {
+        document_type: documentType.trim() || null,
+        manufacturer: manufacturer.trim() || null,
+        equipment: equipment.trim() || null,
+      };
+      const uploadResponse = await uploadPDF(file, metadataPayload);
       const jobId = uploadResponse.job_id;
 
       // Poll the job status every 1 second
@@ -165,6 +173,9 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
    */
   function handleReset() {
     setFile(null);
+    setDocumentType('');
+    setManufacturer('');
+    setEquipment('');
     setUploading(false);
     setError('');
     setIsSuccess(false);
@@ -266,9 +277,60 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
             />
 
             {file && (
-              <p className="upload-file-name">
-                <strong>Selected:</strong> {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </p>
+              <>
+                <p className="upload-file-name">
+                  <strong>Selected:</strong> {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+
+                <div className="upload-metadata-section">
+                  <div className="upload-metadata-header">
+                    <span className="upload-metadata-title">Document Metadata</span>
+                    <span className="upload-metadata-subtitle">Optional &mdash; Leave blank for auto LLM extraction</span>
+                  </div>
+                  <div className="upload-metadata-fields">
+                    <div className="upload-metadata-field">
+                      <label htmlFor="upload-doc-type">Document Type</label>
+                      <select
+                        id="upload-doc-type"
+                        value={documentType}
+                        onChange={(e) => setDocumentType(e.target.value)}
+                        disabled={uploading}
+                      >
+                        <option value="">Auto-detect via LLM</option>
+                        <option value="OEM Manual">OEM Manual</option>
+                        <option value="SOP">SOP</option>
+                        <option value="LOTO Procedure">LOTO Procedure</option>
+                        <option value="Work Instruction">Work Instruction</option>
+                        <option value="Safety Rules">Safety Rules</option>
+                      </select>
+                    </div>
+
+                    <div className="upload-metadata-field">
+                      <label htmlFor="upload-mfr">Manufacturer</label>
+                      <input
+                        id="upload-mfr"
+                        type="text"
+                        placeholder="e.g. Siemens"
+                        value={manufacturer}
+                        onChange={(e) => setManufacturer(e.target.value)}
+                        disabled={uploading}
+                      />
+                    </div>
+
+                    <div className="upload-metadata-field">
+                      <label htmlFor="upload-equipment">Equipment Model</label>
+                      <input
+                        id="upload-equipment"
+                        type="text"
+                        placeholder="e.g. Centrifugal Pump"
+                        value={equipment}
+                        onChange={(e) => setEquipment(e.target.value)}
+                        disabled={uploading}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {error && <p className="upload-error">{error}</p>}

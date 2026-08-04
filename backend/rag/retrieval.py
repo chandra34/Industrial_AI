@@ -65,12 +65,31 @@ class RetrievalService:
 
         try:
             prompt = (
-                "Analyze the following user search query or work permit request and extract any referenced "
-                "equipment manufacturer or specific equipment name/model.\n\n"
-                "CRITICAL: Normalize the 'manufacturer' and 'equipment' values to lowercase, singular form "
-                "(e.g. use 'centrifugal pump' instead of 'Centrifugal Pumps', 'boiler' instead of 'Boilers', "
-                "'siemens' instead of 'Siemens').\n\n"
-                f"Query: {query}"
+                "You are an industrial equipment metadata extractor for a RAG search system. "
+                "Your task is to extract the PRIMARY equipment and manufacturer from user queries.\n\n"
+                "## RULES\n"
+                "1. 'equipment' = The PRIMARY machine or system (e.g. boiler, pump, compressor, turbine). "
+                "NOT sub-components, parts, or accessories (e.g. valves, gaskets, bearings, seals, filters).\n"
+                "2. 'manufacturer' = The OEM brand name of the equipment (e.g. siemens, caterpillar, honeywell). "
+                "NOT the part supplier.\n"
+                "3. Normalize all values to lowercase, singular form.\n"
+                "4. If the query does not reference any specific equipment or manufacturer, return 'Unknown'.\n"
+                "5. When a query mentions a sub-component OF an equipment, extract the parent equipment, not the part.\n\n"
+                "## FEW-SHOT EXAMPLES\n"
+                'Query: "tell me about blow down valves for boiler"\n'
+                'Answer: {"manufacturer": "Unknown", "equipment": "boiler"}\n\n'
+                'Query: "what is the oil change procedure for Siemens compressor?"\n'
+                'Answer: {"manufacturer": "siemens", "equipment": "compressor"}\n\n'
+                'Query: "LOTO steps for the Grundfos centrifugal pump impeller replacement"\n'
+                'Answer: {"manufacturer": "grundfos", "equipment": "centrifugal pump"}\n\n'
+                'Query: "how to calibrate the pressure relief valve on Honeywell boiler?"\n'
+                'Answer: {"manufacturer": "honeywell", "equipment": "boiler"}\n\n'
+                'Query: "what are the safety rules for working at heights?"\n'
+                'Answer: {"manufacturer": "Unknown", "equipment": "Unknown"}\n\n'
+                'Query: "bearing replacement procedure for ABB motor"\n'
+                'Answer: {"manufacturer": "abb", "equipment": "motor"}\n\n'
+                f'Query: "{query}"\n'
+                "Answer:"
             )
             messages = [{"role": "user", "content": prompt}]
             content = await self.llm_service.generate_structured_output(
