@@ -89,10 +89,23 @@ class IngestService:
             
         try:
             prompt = (
-                "You are an industrial safety document analyzer. Extract document metadata from the following text sample "
-                "taken from the beginning of a document. You must return a valid JSON object strictly matching the schema. "
-                "CRITICAL: For the 'manufacturer' and 'equipment' fields, normalize the values to lowercase, singular form "
-                "(e.g. use 'centrifugal pump' instead of 'Centrifugal Pumps', 'boiler' instead of 'Boilers', 'siemens' instead of 'Siemens').\n\n"
+                "You are an industrial safety document metadata analyzer. Extract document metadata from the following text sample "
+                "taken from the beginning of a document.\n\n"
+                "## RULES\n"
+                "1. 'document_type' = One of: 'OEM Manual', 'SOP', 'LOTO Procedure', 'Work Instruction', 'Safety Rules', or 'Unknown'.\n"
+                "2. 'equipment' = The PRIMARY machine or system the document covers (e.g. boiler, centrifugal pump, compressor, turbine). "
+                "Do NOT use sub-components or parts (e.g. use 'boiler' instead of 'blow down valve', 'pump' instead of 'impeller').\n"
+                "3. 'manufacturer' = The OEM brand or the publishing organization (e.g. siemens, honeywell, navedtra, osha). "
+                "If the document is from a standards body or training center, use that organization name.\n"
+                "4. Normalize 'manufacturer' and 'equipment' values to lowercase, singular form.\n"
+                "5. If a field cannot be determined from the text, return 'Unknown'.\n\n"
+                "## FEW-SHOT EXAMPLES\n"
+                'Text: "Boiler Basics, Operation and Maintenance... Naval Education and Training (NAVEDTRA 14265A)"\n'
+                'Answer: {"document_type": "OEM Manual", "manufacturer": "navedtra", "equipment": "boiler"}\n\n'
+                'Text: "Siemens SINAMICS G120 Variable Speed Drive - Installation and Commissioning Guide"\n'
+                'Answer: {"document_type": "OEM Manual", "manufacturer": "siemens", "equipment": "variable speed drive"}\n\n'
+                'Text: "Standard Operating Procedure for Centrifugal Pump Maintenance - Grundfos CRN Series"\n'
+                'Answer: {"document_type": "SOP", "manufacturer": "grundfos", "equipment": "centrifugal pump"}\n\n'
                 f"Text Sample:\n{doc_text_sample[:4000]}"
             )
             messages = [{"role": "user", "content": prompt}]

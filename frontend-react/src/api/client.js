@@ -80,11 +80,16 @@ export async function checkHealth() {
  *
  * @async
  * @param {File} file - The file object to upload.
+ * @param {Object} [metadata={}] - Optional metadata object (document_type, manufacturer, equipment).
  * @returns {Promise<{document_id: string, filename: string, page_count: number, chunk_count: number}>} Metadata of the successfully indexed document.
  */
-export async function uploadPDF(file) {
+export async function uploadPDF(file, metadata = {}) {
   const formData = new FormData();
   formData.append('file', file);
+
+  if (metadata.document_type) formData.append('document_type', metadata.document_type);
+  if (metadata.manufacturer) formData.append('manufacturer', metadata.manufacturer);
+  if (metadata.equipment) formData.append('equipment', metadata.equipment);
 
   return request('POST', '/upload', { body: formData });
 }

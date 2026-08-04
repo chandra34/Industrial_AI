@@ -372,3 +372,88 @@
 .go-to-chat-btn:hover {
   background: var(--accent-hover);
 }
+
+/* Metadata Form Fields Section */
+.upload-metadata-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-light, #e5e7eb);
+}
+
+.upload-metadata-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.upload-metadata-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.upload-metadata-subtitle {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+}
+
+.upload-metadata-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-metadata-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upload-metadata-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #4b5563);
+}
+
+.upload-metadata-field select,
+.upload-metadata-field input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-light, #d1d5db);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary, #111827);
+  background-color: var(--input-bg, #fff);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.upload-metadata-field select:focus,
+.upload-metadata-field input:focus {
+  border-color: var(--accent, #6C63FF);
+  box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.15);
+}
+
+.upload-metadata-field select:disabled,
+.upload-metadata-field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark mode adjustments */
+body.dark-theme .upload-modal {
+  background: var(--card-bg, #1e1e2d);
+}
+
+body.dark-theme .upload-metadata-section {
+  border-top-color: var(--border-light, #2b2b3d);
+}
+
+body.dark-theme .upload-metadata-field select,
+body.dark-theme .upload-metadata-field input {
+  background-color: var(--input-bg, #181824);
+  border-color: var(--border-light, #2b2b3d);
+  color: var(--text-primary, #e2e8f0);
+}
+
