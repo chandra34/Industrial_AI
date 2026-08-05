@@ -12,7 +12,7 @@ class AgentQueryRequest(BaseModel):
     query: str = Field(..., description="Natural language question from user")
     user_role: str = Field(default="operator", description="User authorization role (e.g., operator, manager)")
     plant_id: Optional[str] = Field(default=None, description="Optional default plant ID context")
-    max_steps: int = Field(default=5, ge=1, le=10, description="Max tool execution iterations")
+    max_steps: int = Field(default=10, ge=1, le=20, description="Max tool execution iterations")
 
 
 class ToolCallRecord(BaseModel):

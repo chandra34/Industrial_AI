@@ -9,7 +9,7 @@ import { queryAgent } from '../api/client';
 export function useAgentChat() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [maxSteps, setMaxSteps] = useState(5);
+  const [maxSteps, setMaxSteps] = useState(10);
 
   /**
    * Dispatches user prompts to the multi-agent orchestrator endpoint,
