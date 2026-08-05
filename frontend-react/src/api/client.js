@@ -212,7 +212,7 @@ export async function reviewPermit(permitText, equipment = null, manufacturer = 
  * @param {number} [maxSteps=5] - Max tool execution iterations (1–10).
  * @returns {Promise<{query: string, answer: string, steps_taken: number, tool_calls: Array, llm_provider_used: string, llm_model_used: string}>} The agent response payload.
  */
-export async function queryAgent(query, userRole = 'operator', plantId = null, maxSteps = 5) {
+export async function queryAgent(query, userRole = 'operator', plantId = null, maxSteps = 10) {
   return request('POST', '/agent/query', {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
