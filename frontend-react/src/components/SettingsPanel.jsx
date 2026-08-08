@@ -7,7 +7,12 @@ import {
   createOpcuaProfile,
   deleteOpcuaProfile,
   testOpcuaConnection,
-  connectOpcuaServer
+  connectOpcuaServer,
+  getSapProfiles,
+  createSapProfile,
+  deleteSapProfile,
+  testSapConnection,
+  connectSapServer
 } from '../api/client';
 
 /**
@@ -65,10 +70,145 @@ export default function SettingsPanel({ topK, onTopKChange }) {
     }
   }, []);
 
+  // SAP ERP Profiles and Connection State
+  const [sapProfiles, setSapProfiles] = useState([]);
+  const [activeSapProfile, setActiveSapProfile] = useState(null);
+  const [sapProfileName, setSapProfileName] = useState('');
+  const [sapBaseUrl, setSapBaseUrl] = useState('');
+  const [sapAuthType, setSapAuthType] = useState('basic');
+  const [sapClientNum, setSapClientNum] = useState('100');
+  const [sapUsername, setSapUsername] = useState('');
+  const [sapPassword, setSapPassword] = useState('');
+  const [sapApiKey, setSapApiKey] = useState('');
+  const [sapClientId, setSapClientId] = useState('');
+  const [sapClientSecret, setSapClientSecret] = useState('');
+  const [sapTokenUrl, setSapTokenUrl] = useState('');
+
+  const [isSapTesting, setIsSapTesting] = useState(false);
+  const [sapTestResult, setSapTestResult] = useState(null);
+  const [isSapConnecting, setIsSapConnecting] = useState(false);
+  const [sapErrorMessage, setSapErrorMessage] = useState(null);
+
+  /** Fetch all saved SAP connection profiles. */
+  const fetchSapProfiles = useCallback(async () => {
+    try {
+      const data = await getSapProfiles();
+      setSapProfiles(data);
+      const active = data.find(p => p.is_active);
+      setActiveSapProfile(active || null);
+    } catch (err) {
+      console.error('Failed to fetch SAP profiles:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchProfiles();
-  }, [fetchStatus, fetchProfiles]);
+    fetchSapProfiles();
+  }, [fetchStatus, fetchProfiles, fetchSapProfiles]);
+
+  /** Test current SAP connection form parameters without saving. */
+  const handleSapTestConnection = async (e) => {
+    e.preventDefault();
+    if (!sapBaseUrl) {
+      setSapTestResult({ status: 'failed', message: 'SAP Base URL is required.' });
+      return;
+    }
+    setIsSapTesting(true);
+    setSapTestResult(null);
+    try {
+      const res = await testSapConnection({
+        name: sapProfileName || 'Test SAP Profile',
+        base_url: sapBaseUrl,
+        auth_type: sapAuthType,
+        sap_client: sapClientNum || '100',
+        username: sapAuthType === 'basic' ? sapUsername : null,
+        password: sapAuthType === 'basic' ? sapPassword : null,
+        api_key: sapAuthType === 'apikey' ? sapApiKey : null,
+        client_id: sapAuthType === 'oauth2' ? sapClientId : null,
+        client_secret: sapAuthType === 'oauth2' ? sapClientSecret : null,
+        token_url: sapAuthType === 'oauth2' ? sapTokenUrl : null,
+      });
+      setSapTestResult(res);
+    } catch (err) {
+      setSapTestResult({ status: 'failed', message: err.message || 'Connection handshake failed.' });
+    } finally {
+      setIsSapTesting(false);
+    }
+  };
+
+  /** Save new SAP profile and activate connection. */
+  const handleSapSaveAndConnect = async (e) => {
+    e.preventDefault();
+    if (!sapProfileName || !sapBaseUrl) {
+      setSapErrorMessage('Profile Name and Base URL are required.');
+      return;
+    }
+    setIsSapConnecting(true);
+    setSapErrorMessage(null);
+    setSapTestResult(null);
+    try {
+      const profile = await createSapProfile({
+        name: sapProfileName,
+        base_url: sapBaseUrl,
+        auth_type: sapAuthType,
+        sap_client: sapClientNum || '100',
+        username: sapAuthType === 'basic' ? sapUsername : null,
+        password: sapAuthType === 'basic' ? sapPassword : null,
+        api_key: sapAuthType === 'apikey' ? sapApiKey : null,
+        client_id: sapAuthType === 'oauth2' ? sapClientId : null,
+        client_secret: sapAuthType === 'oauth2' ? sapClientSecret : null,
+        token_url: sapAuthType === 'oauth2' ? sapTokenUrl : null,
+      });
+
+      await connectSapServer({ profile_id: profile.id });
+
+      setSapProfileName('');
+      setSapBaseUrl('');
+      setSapUsername('');
+      setSapPassword('');
+      setSapApiKey('');
+      setSapClientId('');
+      setSapClientSecret('');
+      setSapTokenUrl('');
+      setSapAuthType('basic');
+      setSapClientNum('100');
+
+      await fetchSapProfiles();
+    } catch (err) {
+      setSapErrorMessage(err.message || 'Failed to save and connect to SAP profile.');
+    } finally {
+      setIsSapConnecting(false);
+    }
+  };
+
+  /** Connect to an existing saved SAP profile. */
+  const handleSapConnectProfile = async (profileId) => {
+    setIsSapConnecting(true);
+    setSapErrorMessage(null);
+    try {
+      await connectSapServer({ profile_id: profileId });
+      await fetchSapProfiles();
+    } catch (err) {
+      setSapErrorMessage(err.message || 'Failed to connect to selected SAP profile.');
+    } finally {
+      setIsSapConnecting(false);
+    }
+  };
+
+  /** Delete a saved SAP profile. */
+  const handleSapDeleteProfile = async (profileId, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this SAP connection profile?')) {
+      return;
+    }
+    try {
+      await deleteSapProfile(profileId);
+      await fetchSapProfiles();
+    } catch (err) {
+      setSapErrorMessage(err.message || 'Failed to delete SAP profile.');
+    }
+  };
 
   /** Trigger catalog re-index and poll for completion. */
   const handleSync = async () => {
@@ -462,6 +602,271 @@ export default function SettingsPanel({ topK, onTopKChange }) {
                 disabled={isConnecting || isTesting}
               >
                 {isConnecting ? 'Establishing Connection...' : '💾 Save & Connect'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      {/* ── SAP S/4HANA ERP Connector Card ── */}
+      <div className={styles.settingsCard} style={{ marginTop: '16px' }}>
+        <h3 className={styles.settingsSubtitle}>💼 SAP S/4HANA ERP Connector</h3>
+        <p className={styles.settingsDescription}>
+          Connect and switch SAP S/4HANA or SAP ECC enterprise environments dynamically for live Equipment, Maintenance Order, and BOM queries.
+        </p>
+
+        {/* Dynamic Connection Status Indicator */}
+        <div className={styles.activeConnectionBlock}>
+          <h4 className={styles.sectionHeader}>Active SAP Server Connection</h4>
+          <div className={styles.connectorStatus}>
+            <span className={`${styles.statusDot} ${activeSapProfile ? styles.statusDotActive : styles.statusDotInactive}`} />
+            <span className={styles.statusText}>
+              {activeSapProfile ? `${activeSapProfile.name}` : 'Disconnected (Using .env default)'}
+            </span>
+            {activeSapProfile && (
+              <span className={styles.activeEndpoint}>
+                ({activeSapProfile.base_url} · Auth: {activeSapProfile.auth_type.toUpperCase()} · Client: {activeSapProfile.sap_client})
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Connection Profiles Selection Grid */}
+        <div className={styles.profilesSection}>
+          <h4 className={styles.sectionHeader}>Saved SAP Environment Profiles</h4>
+          {sapProfiles.length === 0 ? (
+            <p className={styles.noProfilesText}>No SAP connection profiles saved. Use the form below to add an SAP environment.</p>
+          ) : (
+            <div className={styles.profilesGrid}>
+              {sapProfiles.map((profile) => (
+                <div 
+                  key={profile.id} 
+                  className={`${styles.profileCard} ${profile.is_active ? styles.profileCardActive : ''}`}
+                >
+                  <div className={styles.profileMeta}>
+                    <span className={styles.profileName}>{profile.name}</span>
+                    <span className={styles.profileUrl}>{profile.base_url}</span>
+                    <span className={styles.profileUser}>
+                      Auth: {profile.auth_type.toUpperCase()} | Client: {profile.sap_client}
+                      {profile.username && ` | User: ${profile.username}`}
+                    </span>
+                  </div>
+                  <div className={styles.profileCardActions}>
+                    {profile.is_active ? (
+                      <span className={styles.activeBadge}>Active 🟢</span>
+                    ) : (
+                      <button 
+                        className={styles.connectProfileBtn}
+                        onClick={() => handleSapConnectProfile(profile.id)}
+                        disabled={isSapConnecting}
+                      >
+                        Connect
+                      </button>
+                    )}
+                    {!profile.is_active && (
+                      <button 
+                        className={styles.deleteProfileBtn}
+                        onClick={(e) => handleSapDeleteProfile(profile.id, e)}
+                        title="Delete Profile"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Add Connection Form */}
+        <div className={styles.addProfileSection}>
+          <h4 className={styles.sectionHeader}>Add New SAP Environment</h4>
+          <form className={styles.connectionForm} onSubmit={handleSapSaveAndConnect}>
+            {sapErrorMessage && <p className={styles.syncError}>{sapErrorMessage}</p>}
+            
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Profile / System Name</label>
+                <input 
+                  type="text" 
+                  className={styles.formInput} 
+                  placeholder="e.g. SAP S/4HANA Production"
+                  value={sapProfileName}
+                  onChange={(e) => setSapProfileName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>SAP Base URL</label>
+                <input 
+                  type="text" 
+                  className={styles.formInput} 
+                  placeholder="https://my-s4hana.company.com"
+                  value={sapBaseUrl}
+                  onChange={(e) => setSapBaseUrl(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Authentication Mode</label>
+                <div className={styles.authRadioGroup}>
+                  <label className={styles.radioLabel}>
+                    <input 
+                      type="radio" 
+                      name="sap_auth_type"
+                      value="basic"
+                      checked={sapAuthType === 'basic'}
+                      onChange={() => setSapAuthType('basic')}
+                    />
+                    Basic Auth
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input 
+                      type="radio" 
+                      name="sap_auth_type"
+                      value="apikey"
+                      checked={sapAuthType === 'apikey'}
+                      onChange={() => setSapAuthType('apikey')}
+                    />
+                    API Key (Sandbox)
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input 
+                      type="radio" 
+                      name="sap_auth_type"
+                      value="oauth2"
+                      checked={sapAuthType === 'oauth2'}
+                      onChange={() => setSapAuthType('oauth2')}
+                    />
+                    OAuth 2.0
+                  </label>
+                </div>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>SAP Client Number (Mandant)</label>
+                <input 
+                  type="text" 
+                  className={styles.formInput} 
+                  placeholder="100"
+                  value={sapClientNum}
+                  onChange={(e) => setSapClientNum(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Basic Auth Form Fields */}
+            {sapAuthType === 'basic' && (
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>SAP Service Username</label>
+                  <input 
+                    type="text" 
+                    className={styles.formInput} 
+                    value={sapUsername}
+                    onChange={(e) => setSapUsername(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Password</label>
+                  <input 
+                    type="password" 
+                    className={styles.formInput} 
+                    value={sapPassword}
+                    onChange={(e) => setSapPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* API Key Form Field */}
+            {sapAuthType === 'apikey' && (
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>API Key</label>
+                  <input 
+                    type="password" 
+                    className={styles.formInput} 
+                    placeholder="Enter SAP API Key"
+                    value={sapApiKey}
+                    onChange={(e) => setSapApiKey(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* OAuth 2.0 Form Fields */}
+            {sapAuthType === 'oauth2' && (
+              <>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>OAuth Token Endpoint URL</label>
+                    <input 
+                      type="text" 
+                      className={styles.formInput} 
+                      placeholder="https://<subdomain>.authentication.eu10.hana.ondemand.com/oauth/token"
+                      value={sapTokenUrl}
+                      onChange={(e) => setSapTokenUrl(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Client ID</label>
+                    <input 
+                      type="text" 
+                      className={styles.formInput} 
+                      value={sapClientId}
+                      onChange={(e) => setSapClientId(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Client Secret</label>
+                    <input 
+                      type="password" 
+                      className={styles.formInput} 
+                      value={sapClientSecret}
+                      onChange={(e) => setSapClientSecret(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {sapTestResult && (
+              <div className={`${styles.testFeedback} ${sapTestResult.status === 'connected' ? styles.testSuccess : styles.testError}`}>
+                {sapTestResult.message} {sapTestResult.latency_ms > 0 && `(Ping: ${sapTestResult.latency_ms}ms)`}
+              </div>
+            )}
+
+            <div className={styles.formActions}>
+              <button 
+                type="button" 
+                className={styles.testButton}
+                onClick={handleSapTestConnection}
+                disabled={isSapTesting || isSapConnecting}
+              >
+                {isSapTesting ? 'Testing Handshake...' : '🔌 Test SAP Connection'}
+              </button>
+              
+              <button 
+                type="submit" 
+                className={styles.saveButton}
+                disabled={isSapConnecting || isSapTesting}
+              >
+                {isSapConnecting ? 'Establishing Connection...' : '💾 Save & Connect SAP'}
               </button>
             </div>
           </form>

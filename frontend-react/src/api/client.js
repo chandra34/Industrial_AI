@@ -308,5 +308,69 @@ export async function connectOpcuaServer(connectionData) {
   });
 }
 
+/**
+ * Fetches all saved SAP ERP connection profiles.
+ *
+ * @async
+ * @returns {Promise<Array>} List of SAP connection profiles.
+ */
+export async function getSapProfiles() {
+  return request('GET', '/sap/profiles');
+}
+
+/**
+ * Saves a new SAP ERP connection profile to the database.
+ *
+ * @async
+ * @param {Object} profileData - Profile details to save.
+ * @returns {Promise<Object>} Created profile details.
+ */
+export async function createSapProfile(profileData) {
+  return request('POST', '/sap/profiles', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profileData),
+  });
+}
+
+/**
+ * Deletes a previously saved SAP connection profile.
+ *
+ * @async
+ * @param {string} profileId - Unique ID of the profile.
+ * @returns {Promise<Object>} Status response.
+ */
+export async function deleteSapProfile(profileId) {
+  return request('DELETE', `/sap/profiles/${profileId}`);
+}
+
+/**
+ * Tests SAP connection credentials and endpoint without saving.
+ *
+ * @async
+ * @param {Object} connectionData - Server credentials to test.
+ * @returns {Promise<Object>} Connection test result.
+ */
+export async function testSapConnection(connectionData) {
+  return request('POST', '/sap/test', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connectionData),
+  });
+}
+
+/**
+ * Connects to a saved SAP connection profile, making it active.
+ *
+ * @async
+ * @param {Object} connectionData - Contains profile_id of saved server profile.
+ * @returns {Promise<Object>} Connection result and status.
+ */
+export async function connectSapServer(connectionData) {
+  return request('POST', '/sap/connect', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connectionData),
+  });
+}
+
+
 
 
