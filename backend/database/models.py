@@ -72,3 +72,25 @@ class OPCUAConnectionProfile(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+
+class SAPConnectionProfile(Base):
+    """Saved SAP ERP connection profiles for dynamic environment switching."""
+
+    __tablename__ = "sap_connection_profiles"
+
+    id = Column(String, primary_key=True, doc="Unique profile ID (UUID hex)")
+    name = Column(String, nullable=False, doc="Human-readable profile name (e.g. 'SAP S/4HANA Production')")
+    base_url = Column(String, nullable=False, doc="SAP system base URL (e.g. 'https://my-s4hana.company.com')")
+    auth_type = Column(String, nullable=False, default="basic", doc="'basic', 'oauth2', or 'apikey'")
+    sap_client = Column(String, nullable=False, default="100", doc="SAP Client number (Mandant)")
+    username = Column(String, nullable=True, doc="SAP username (for auth_type='basic')")
+    encrypted_password = Column(Text, nullable=True, doc="Fernet-encrypted password (for auth_type='basic')")
+    encrypted_api_key = Column(Text, nullable=True, doc="Fernet-encrypted API key (for auth_type='apikey')")
+    client_id = Column(String, nullable=True, doc="OAuth 2.0 Client ID (for auth_type='oauth2')")
+    encrypted_client_secret = Column(Text, nullable=True, doc="Fernet-encrypted OAuth client secret")
+    token_url = Column(String, nullable=True, doc="OAuth 2.0 Token Endpoint URL")
+    is_active = Column(String, nullable=False, default="false", doc="'true' if currently connected")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+

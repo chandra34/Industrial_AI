@@ -28,8 +28,9 @@ from backend.connectors.sap import SAPClient, SAPConfig
 from backend.connectors.opcua import OPCUAClient, OPCUAConfig
 from backend.agents.orchestrator import IndustrialOrchestrator
 from sqlalchemy import select
-from backend.database.models import OPCUAConnectionProfile
+from backend.database.models import OPCUAConnectionProfile, SAPConnectionProfile
 from backend.utils.crypto import decrypt_password
+
 
 
 settings = get_settings()
@@ -291,7 +292,42 @@ async def on_startup() -> None:
     except Exception as e:
         logger.warning("Could not restore active OPC UA profile at startup: %s. Using default .env configuration.", e)
 
+    # Restore active SAP connection profile if saved in DB
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(SAPConnectionProfile).where(SAPConnectionProfile.is_active == "true")
+            )
+            active_sap_profile = result.scalar_one_or_none()
+            if active_sap_profile:
+                logger.info("Restoring active SAP profile: %s (%s)", active_sap_profile.name, active_sap_profile.base_url)
+                from pydantic import SecretStr
+                restored_sap_config = SAPConfig(
+                    _env_file=None,
+                    base_url=active_sap_profile.base_url,
+                    auth_type=active_sap_profile.auth_type,
+                    sap_client=active_sap_profile.sap_client,
+                    username=active_sap_profile.username,
+                    verify_ssl=False,
+                )
+                if active_sap_profile.encrypted_password:
+                    restored_sap_config.password = SecretStr(decrypt_password(active_sap_profile.encrypted_password))
+                if active_sap_profile.encrypted_api_key:
+                    restored_sap_config.api_key = SecretStr(decrypt_password(active_sap_profile.encrypted_api_key))
+                if active_sap_profile.client_id:
+                    restored_sap_config.client_id = active_sap_profile.client_id
+                if active_sap_profile.encrypted_client_secret:
+                    restored_sap_config.client_secret = SecretStr(decrypt_password(active_sap_profile.encrypted_client_secret))
+                if active_sap_profile.token_url:
+                    restored_sap_config.token_url = active_sap_profile.token_url
+
+                restored_sap_client = SAPClient(restored_sap_config)
+                app.state.industrial_orchestrator.sap_client = restored_sap_client
+    except Exception as e:
+        logger.warning("Could not restore active SAP profile at startup: %s. Using default .env configuration.", e)
+
     logger.info("Application startup complete")
+
 
 
 
