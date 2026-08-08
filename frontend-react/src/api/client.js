@@ -245,5 +245,68 @@ export async function getOpcuaCatalogStatus() {
   return request('GET', '/opcua/status');
 }
 
+/**
+ * Fetches all saved OPC UA connection profiles.
+ *
+ * @async
+ * @returns {Promise<Array>} List of connection profiles.
+ */
+export async function getOpcuaProfiles() {
+  return request('GET', '/opcua/profiles');
+}
+
+/**
+ * Saves a new OPC UA connection profile to the database.
+ *
+ * @async
+ * @param {Object} profileData - Profile details to save.
+ * @returns {Promise<Object>} Created profile details.
+ */
+export async function createOpcuaProfile(profileData) {
+  return request('POST', '/opcua/profiles', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profileData),
+  });
+}
+
+/**
+ * Deletes a previously saved connection profile.
+ *
+ * @async
+ * @param {string} profileId - Unique ID of the profile.
+ * @returns {Promise<Object>} Status response.
+ */
+export async function deleteOpcuaProfile(profileId) {
+  return request('DELETE', `/opcua/profiles/${profileId}`);
+}
+
+/**
+ * Tests connection credentials and endpoint without saving.
+ *
+ * @async
+ * @param {Object} connectionData - Server credentials to test.
+ * @returns {Promise<Object>} Connection test result.
+ */
+export async function testOpcuaConnection(connectionData) {
+  return request('POST', '/opcua/test', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connectionData),
+  });
+}
+
+/**
+ * Connects to a saved connection profile, making it active and triggering tag index.
+ *
+ * @async
+ * @param {Object} connectionData - Contains profile_id of saved server profile.
+ * @returns {Promise<Object>} Connection result and status.
+ */
+export async function connectOpcuaServer(connectionData) {
+  return request('POST', '/opcua/connect', {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connectionData),
+  });
+}
+
 
 

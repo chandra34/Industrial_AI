@@ -27,6 +27,9 @@ from backend.utils.logging_context import CorrelationFilter, request_id_var, rou
 from backend.connectors.sap import SAPClient, SAPConfig
 from backend.connectors.opcua import OPCUAClient, OPCUAConfig
 from backend.agents.orchestrator import IndustrialOrchestrator
+from sqlalchemy import select
+from backend.database.models import OPCUAConnectionProfile
+from backend.utils.crypto import decrypt_password
 
 
 settings = get_settings()
@@ -262,6 +265,31 @@ async def on_startup() -> None:
         opcua_client=opcua_client,
         retrieval_service=retrieval_service,
     )
+
+    # Check database for active connection profile and restore if exists
+    from backend.database.session import AsyncSessionLocal
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(OPCUAConnectionProfile).where(OPCUAConnectionProfile.is_active == "true")
+            )
+            active_profile = result.scalar_one_or_none()
+            if active_profile:
+                logger.info("Restoring active OPC UA profile: %s (%s)", active_profile.name, active_profile.endpoint_url)
+                decrypted_pw = decrypt_password(active_profile.encrypted_password) if active_profile.encrypted_password else None
+                restored_config = OPCUAConfig(
+                    endpoint_url=active_profile.endpoint_url,
+                    username=active_profile.username,
+                    security_string=active_profile.security_policy
+                )
+                if active_profile.username and decrypted_pw:
+                    from pydantic import SecretStr
+                    restored_config.password = SecretStr(decrypted_pw)
+                
+                restored_client = OPCUAClient(restored_config)
+                app.state.industrial_orchestrator.opcua_client = restored_client
+    except Exception as e:
+        logger.warning("Could not restore active OPC UA profile at startup: %s. Using default .env configuration.", e)
 
     logger.info("Application startup complete")
 

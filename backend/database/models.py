@@ -55,3 +55,20 @@ class OPCUATagCatalog(Base):
     unit = Column(String, nullable=True, doc="Engineering unit (e.g. '°C', 'bar', 'RPM')")
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
+
+class OPCUAConnectionProfile(Base):
+    """Saved OPC UA server connection profiles for dynamic machine switching."""
+
+    __tablename__ = "opcua_connection_profiles"
+
+    id = Column(String, primary_key=True, doc="Unique profile ID (UUID hex)")
+    name = Column(String, nullable=False, doc="Human-readable profile name (e.g. 'Satake Sorter Line 1')")
+    endpoint_url = Column(String, nullable=False, doc="OPC UA endpoint URL (e.g. 'opc.tcp://192.168.1.50:4840')")
+    auth_mode = Column(String, nullable=False, default="anonymous", doc="'anonymous' or 'username_password'")
+    username = Column(String, nullable=True, doc="OPC UA username (if auth_mode='username_password')")
+    encrypted_password = Column(Text, nullable=True, doc="Fernet-encrypted password string")
+    security_policy = Column(String, nullable=True, doc="Security policy string (e.g. 'Basic256Sha256,SignAndEncrypt,...')")
+    is_active = Column(String, nullable=False, default="false", doc="'true' if this is the currently connected profile")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
