@@ -52,20 +52,27 @@ class LocalStorageProvider(BaseStorageProvider):
     """Store files on the local filesystem under ``settings.resolved_upload_dir``."""
 
     def __init__(self, settings: Settings) -> None:
-        self.upload_dir = settings.resolved_upload_dir
+        self.upload_dir = settings.resolved_upload_dir.resolve()
         self.upload_dir.mkdir(parents=True, exist_ok=True)
+
+    def _get_safe_path(self, file_key: str) -> Path:
+        """Resolve target path and verify it is strictly a child of upload_dir."""
+        target_path = (self.upload_dir / file_key).resolve()
+        if not target_path.is_relative_to(self.upload_dir):
+            raise ValueError("Invalid file key: Path traversal attempt detected.")
+        return target_path
 
     async def upload_file(self, file_bytes: bytes, destination_key: str) -> str:
         from fastapi.concurrency import run_in_threadpool
 
-        target_path = self.upload_dir / destination_key
+        target_path = self._get_safe_path(destination_key)
         await run_in_threadpool(target_path.write_bytes, file_bytes)
         return str(target_path)
 
     async def download_file(self, file_key: str) -> bytes:
         from fastapi.concurrency import run_in_threadpool
 
-        target_path = self.upload_dir / file_key
+        target_path = self._get_safe_path(file_key)
         exists = await run_in_threadpool(target_path.exists)
         if not exists:
             raise FileNotFoundError(f"File not found on local disk: {file_key}")
@@ -74,7 +81,7 @@ class LocalStorageProvider(BaseStorageProvider):
     async def delete_file(self, file_key: str) -> bool:
         from fastapi.concurrency import run_in_threadpool
 
-        target_path = self.upload_dir / file_key
+        target_path = self._get_safe_path(file_key)
         
         def _delete() -> bool:
             if target_path.exists():

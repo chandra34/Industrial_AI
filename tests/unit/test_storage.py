@@ -210,3 +210,24 @@ async def test_gcs_storage_lifecycle():
                 assert deleted is True
                 mock_blob.exists.assert_called_once()
                 mock_blob.delete.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_local_storage_path_traversal_prevention(local_storage):
+    """Verify that path traversal sequences raise ValueError across upload, download, and delete."""
+    malicious_keys = [
+        "../test.pdf",
+        "../../etc/passwd",
+        "subdir/../../secret.txt",
+    ]
+
+    for key in malicious_keys:
+        with pytest.raises(ValueError, match="Path traversal attempt detected"):
+            await local_storage.upload_file(b"content", key)
+
+        with pytest.raises(ValueError, match="Path traversal attempt detected"):
+            await local_storage.download_file(key)
+
+        with pytest.raises(ValueError, match="Path traversal attempt detected"):
+            await local_storage.delete_file(key)
+
