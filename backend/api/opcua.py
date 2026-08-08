@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api.auth import get_current_user, FirebaseUser
 from backend.connectors.opcua.connection import OPCUAClient
 from backend.connectors.opcua.config import OPCUAConfig
 from backend.connectors.opcua.crawler import OPCUATagCrawler
@@ -118,7 +119,11 @@ async def _reindex_with_client(client: OPCUAClient) -> None:
 # ---------------------------------------------------------------------------
 
 @router.post("/reindex")
-async def reindex_opcua_catalog(request: Request, background_tasks: BackgroundTasks):
+async def reindex_opcua_catalog(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    current_user: FirebaseUser = Depends(get_current_user),
+):
     """Trigger an on-demand OPC UA address space crawl and catalog refresh.
 
     Uses the currently active client configured on the orchestrator.
@@ -140,14 +145,20 @@ async def reindex_opcua_catalog(request: Request, background_tasks: BackgroundTa
 
 
 @router.get("/status")
-async def get_opcua_catalog_status(db: AsyncSession = Depends(get_db)):
+async def get_opcua_catalog_status(
+    current_user: FirebaseUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Return the current OPC UA tag catalog status (tag count and last sync time)."""
     status = await get_catalog_status(db)
     return status
 
 
 @router.get("/profiles", response_model=List[OPCUAProfileResponse])
-async def list_profiles(db: AsyncSession = Depends(get_db)):
+async def list_profiles(
+    current_user: FirebaseUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Return all saved OPC UA connection profiles."""
     result = await db.execute(select(OPCUAConnectionProfile).order_by(OPCUAConnectionProfile.name))
     profiles = result.scalars().all()
@@ -173,6 +184,7 @@ async def list_profiles(db: AsyncSession = Depends(get_db)):
 @router.post("/profiles", response_model=OPCUAProfileResponse)
 async def create_profile(
     payload: OPCUAProfileCreateRequest,
+    current_user: FirebaseUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Save a new OPC UA connection profile (password is encrypted)."""
@@ -214,7 +226,11 @@ async def create_profile(
 
 
 @router.delete("/profiles/{profile_id}")
-async def delete_profile(profile_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_profile(
+    profile_id: str,
+    current_user: FirebaseUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a saved connection profile (cannot delete active profile)."""
     result = await db.execute(
         select(OPCUAConnectionProfile).where(OPCUAConnectionProfile.id == profile_id)
@@ -236,7 +252,10 @@ async def delete_profile(profile_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/test", response_model=OPCUAConnectResponse)
-async def test_connection(payload: OPCUAConnectRequest):
+async def test_connection(
+    payload: OPCUAConnectRequest,
+    current_user: FirebaseUser = Depends(get_current_user),
+):
     """Test connection credentials against an OPC UA server endpoint.
     
     Performs connection handshake and disconnects immediately.
@@ -301,6 +320,7 @@ async def connect_to_server(
     payload: OPCUAConnectRequest,
     request: Request,
     background_tasks: BackgroundTasks,
+    current_user: FirebaseUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Connect to a saved profile and rebind the active orchestrator client.
