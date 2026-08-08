@@ -303,12 +303,10 @@ async def on_startup() -> None:
                 logger.info("Restoring active SAP profile: %s (%s)", active_sap_profile.name, active_sap_profile.base_url)
                 from pydantic import SecretStr
                 restored_sap_config = SAPConfig(
-                    _env_file=None,
                     base_url=active_sap_profile.base_url,
                     auth_type=active_sap_profile.auth_type,
                     sap_client=active_sap_profile.sap_client,
                     username=active_sap_profile.username,
-                    verify_ssl=False,
                 )
                 if active_sap_profile.encrypted_password:
                     restored_sap_config.password = SecretStr(decrypt_password(active_sap_profile.encrypted_password))

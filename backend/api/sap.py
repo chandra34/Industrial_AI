@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api.auth import get_current_user, FirebaseUser
 from backend.connectors.sap.client import SAPClient
 from backend.connectors.sap.config import SAPConfig
 from backend.connectors.sap.exceptions import SAPConnectorError
@@ -85,7 +86,10 @@ class SAPConnectResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.get("/profiles", response_model=List[SAPProfileResponse])
-async def list_sap_profiles(db: AsyncSession = Depends(get_db)):
+async def list_sap_profiles(
+    current_user: FirebaseUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Return all saved SAP connection profiles."""
     result = await db.execute(select(SAPConnectionProfile).order_by(SAPConnectionProfile.name))
     profiles = result.scalars().all()
@@ -113,6 +117,7 @@ async def list_sap_profiles(db: AsyncSession = Depends(get_db)):
 @router.post("/profiles", response_model=SAPProfileResponse)
 async def create_sap_profile(
     payload: SAPProfileCreateRequest,
+    current_user: FirebaseUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Save a new SAP connection profile (secrets are encrypted)."""
@@ -156,7 +161,11 @@ async def create_sap_profile(
 
 
 @router.delete("/profiles/{profile_id}")
-async def delete_sap_profile(profile_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_sap_profile(
+    profile_id: str,
+    current_user: FirebaseUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a saved SAP connection profile (cannot delete active profile)."""
     result = await db.execute(
         select(SAPConnectionProfile).where(SAPConnectionProfile.id == profile_id)
@@ -178,19 +187,20 @@ async def delete_sap_profile(profile_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/test", response_model=SAPConnectResponse)
-async def test_sap_connection(payload: SAPProfileCreateRequest):
+async def test_sap_connection(
+    payload: SAPProfileCreateRequest,
+    current_user: FirebaseUser = Depends(get_current_user),
+):
     """Test SAP connection by performing a lightweight HTTP GET connection handshake.
 
     Verifies network reachability and authentication credentials.
     """
     from pydantic import SecretStr
     test_config = SAPConfig(
-        _env_file=None,
         base_url=payload.base_url,
         auth_type=payload.auth_type,
         sap_client=payload.sap_client,
         username=payload.username,
-        verify_ssl=False,
     )
     if payload.password:
         test_config.password = SecretStr(payload.password)
@@ -229,6 +239,7 @@ async def test_sap_connection(payload: SAPProfileCreateRequest):
 async def connect_to_sap_server(
     payload: SAPConnectRequest,
     request: Request,
+    current_user: FirebaseUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Connect to a saved SAP profile and rebind the active orchestrator SAP client.
@@ -251,12 +262,10 @@ async def connect_to_sap_server(
     # Build SAPConfig from DB profile
     from pydantic import SecretStr
     new_config = SAPConfig(
-        _env_file=None,
         base_url=profile.base_url,
         auth_type=profile.auth_type,
         sap_client=profile.sap_client,
         username=profile.username,
-        verify_ssl=False,
     )
     if decrypted_pw:
         new_config.password = SecretStr(decrypted_pw)
