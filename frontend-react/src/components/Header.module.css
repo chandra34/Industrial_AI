@@ -57,3 +57,39 @@
 .headerLogoutBtn:hover {
   background: #f3f4f6;
 }
+
+.opcuaPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--border-light);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.opcuaDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.opcuaDotActive {
+  background: var(--success);
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+}
+
+.opcuaDotInactive {
+  background: #94a3b8;
+}
+
+.opcuaLabel {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
