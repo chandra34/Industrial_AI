@@ -162,15 +162,29 @@ class LLMProvider:
                 if not isinstance(resp_dict, dict):
                     resp_dict = {"result": resp_dict}
 
-                contents.append({
-                    "role": "user",
-                    "parts": [{
-                        "functionResponse": {
-                            "name": tool_name,
-                            "response": resp_dict
-                        }
-                    }]
-                })
+                fn_response_part = {
+                    "functionResponse": {
+                        "name": tool_name,
+                        "response": resp_dict
+                    }
+                }
+
+                # Gemini requires ALL functionResponse parts from a single model
+                # turn to be grouped into ONE user message. Merge consecutive tool
+                # responses into the same user entry to avoid invalid consecutive
+                # user turns (HTTP 400).
+                if (
+                    contents
+                    and contents[-1].get("role") == "user"
+                    and contents[-1].get("parts")
+                    and "functionResponse" in contents[-1]["parts"][-1]
+                ):
+                    contents[-1]["parts"].append(fn_response_part)
+                else:
+                    contents.append({
+                        "role": "user",
+                        "parts": [fn_response_part]
+                    })
 
         request_dict = {
             "contents": contents,

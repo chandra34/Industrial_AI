@@ -117,7 +117,8 @@ async def get_work_orders(
         escaped_order_type = escape_odata_val(order_type)
         filters.append(f"MaintenanceOrderType eq '{escaped_order_type}'")
     if system_status:
-        filters.append(f"MaintOrdBasicStartDate ne null")
+        escaped_status = escape_odata_val(system_status)
+        filters.append(f"substringof('{escaped_status}', ConcatenatedActiveSystStsName)")
 
     filter_expr = " and ".join(filters) if filters else None
 

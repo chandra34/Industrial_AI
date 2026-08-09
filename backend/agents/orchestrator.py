@@ -2,11 +2,12 @@
 Core Native Python Industrial Multi-Agent Orchestrator.
 """
 
+import asyncio
 import time
 import json
 import inspect
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from backend.connectors.sap import SAPClient
 from backend.connectors.opcua import OPCUAClient
@@ -43,6 +44,86 @@ class IndustrialOrchestrator:
         self.retrieval_service = retrieval_service
         self.llm_provider = LLMProvider(provider=provider, model=model)
         self.tool_definitions = get_openai_tool_definitions()
+
+    async def _execute_single_tool(
+        self,
+        tc: Any,
+        user_id: str,
+        timeout_seconds: float = 15.0,
+    ) -> Tuple[ToolCallRecord, Dict[str, Any]]:
+        """Execute a single tool call with guardrail verification, signature filtering, and timeout protection."""
+        t_start = time.time()
+        tool_name = tc.name
+        tool_args = tc.arguments or {}
+
+        # Guardrail: block non-whitelisted (write/mutation) tool calls
+        if not check_tool_allowed(tool_name):
+            result = {
+                "error": f"Guardrail: Tool '{tool_name}' is not permitted. Only read-only diagnostic tools are allowed."
+            }
+            t_elapsed = time.time() - t_start
+            rec = ToolCallRecord(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                result=result,
+                execution_time_seconds=round(t_elapsed, 4),
+            )
+            return rec, {
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "name": tool_name,
+                "content": json.dumps(result),
+            }
+
+        logger.info("Executing tool '%s' with args %s", tool_name, tool_args)
+
+        try:
+            if tool_name in ALL_EXECUTABLE_TOOLS:
+                func = ALL_EXECUTABLE_TOOLS[tool_name]
+                sig = inspect.signature(func)
+
+                # Signature inspection: pass client or retrieval_service if tool expects parameter
+                kwargs = dict(tool_args)
+                if "client" in sig.parameters:
+                    kwargs["client"] = self.sap_client
+                if "opcua_client" in sig.parameters:
+                    kwargs["opcua_client"] = self.opcua_client
+                if "retrieval_service" in sig.parameters:
+                    kwargs["retrieval_service"] = self.retrieval_service
+                if "user_id" in sig.parameters:
+                    kwargs["user_id"] = user_id
+
+                # Pillar 1: Signature Filtering (strip LLM-hallucinated kwargs)
+                valid_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+
+                # Pillar 2: Timeout Protection (15s max per tool)
+                result = await asyncio.wait_for(
+                    func(**valid_kwargs),
+                    timeout=timeout_seconds,
+                )
+            else:
+                result = {"error": f"Tool '{tool_name}' not found."}
+        except asyncio.TimeoutError:
+            logger.warning("Tool '%s' execution timed out after %.1f seconds.", tool_name, timeout_seconds)
+            result = {"error": f"Tool '{tool_name}' execution timed out after {timeout_seconds} seconds."}
+        except Exception as e:
+            logger.error("Error executing tool %s: %s", tool_name, e, exc_info=True)
+            result = {"error": str(e)}
+
+        t_elapsed = time.time() - t_start
+        rec = ToolCallRecord(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            result=result,
+            execution_time_seconds=round(t_elapsed, 4),
+        )
+        tool_msg = {
+            "role": "tool",
+            "tool_call_id": tc.id,
+            "name": tool_name,
+            "content": json.dumps(result),
+        }
+        return rec, tool_msg
 
     async def run(self, request: AgentQueryRequest, user_id: str = "default_user") -> AgentResponse:
         """Run the native async tool call loop.
@@ -95,74 +176,16 @@ class IndustrialOrchestrator:
                         ] if unified_msg.tool_calls else None,
                     })
 
-            # Execute each requested tool
-            for tc in unified_msg.tool_calls:
-                t_start = time.time()
-                tool_name = tc.name
-                tool_args = tc.arguments
+            # Pillar 3: Concurrent Parallel Tool Execution
+            tasks = [
+                self._execute_single_tool(tc, user_id=user_id)
+                for tc in unified_msg.tool_calls
+            ]
+            executed_results = await asyncio.gather(*tasks)
 
-                # Guardrail: block non-whitelisted (write/mutation) tool calls
-                if not check_tool_allowed(tool_name):
-                    result = {
-                        "error": f"Guardrail: Tool '{tool_name}' is not permitted. Only read-only diagnostic tools are allowed."
-                    }
-                    t_elapsed = time.time() - t_start
-                    tool_records.append(
-                        ToolCallRecord(
-                            tool_name=tool_name,
-                            tool_args=tool_args,
-                            result=result,
-                            execution_time_seconds=round(t_elapsed, 4),
-                        )
-                    )
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "name": tc.name,
-                        "content": json.dumps(result),
-                    })
-                    continue
-
-                logger.info("Executing tool '%s' with args %s", tool_name, tool_args)
-
-                try:
-                    if tool_name in ALL_EXECUTABLE_TOOLS:
-                        func = ALL_EXECUTABLE_TOOLS[tool_name]
-                        # Signature inspection: pass client or retrieval_service if tool expects parameter
-                        sig = inspect.signature(func)
-                        kwargs = dict(tool_args)
-                        if "client" in sig.parameters:
-                            kwargs["client"] = self.sap_client
-                        if "opcua_client" in sig.parameters:
-                            kwargs["opcua_client"] = self.opcua_client
-                        if "retrieval_service" in sig.parameters:
-                            kwargs["retrieval_service"] = self.retrieval_service
-                        if "user_id" in sig.parameters:
-                            kwargs["user_id"] = user_id
-                        result = await func(**kwargs)
-                    else:
-                        result = {"error": f"Tool '{tool_name}' not found."}
-                except Exception as e:
-                    logger.error("Error executing tool %s: %s", tool_name, e, exc_info=True)
-                    result = {"error": str(e)}
-
-                t_elapsed = time.time() - t_start
-                tool_records.append(
-                    ToolCallRecord(
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        result=result,
-                        execution_time_seconds=round(t_elapsed, 4),
-                    )
-                )
-
-                # Append tool execution result back to conversation
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "name": tc.name,
-                    "content": json.dumps(result),
-                })
+            for rec, tool_msg in executed_results:
+                tool_records.append(rec)
+                messages.append(tool_msg)
 
         return AgentResponse(
             query=request.query,
