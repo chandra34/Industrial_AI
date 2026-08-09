@@ -12,7 +12,11 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient, escape_odata_val
+from backend.connectors.sap.client import (
+    SAPClient,
+    escape_odata_val,
+    normalize_sap_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +45,7 @@ async def get_inspection_lots(
     logger.info("QM Tool: get_inspection_lots(material=%s, batch=%s, plant=%s)", material_id, batch_id, plant_id)
     filters = []
     if material_id:
-        escaped_material_id = escape_odata_val(material_id)
+        escaped_material_id = escape_odata_val(normalize_sap_id(material_id))
         filters.append(f"Material eq '{escaped_material_id}'")
     if batch_id:
         escaped_batch_id = escape_odata_val(batch_id)
@@ -58,7 +62,7 @@ async def get_inspection_lots(
         filter_expr=filter_expr,
         top=top,
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])
 
 
 async def get_quality_notifications(
@@ -93,4 +97,4 @@ async def get_quality_notifications(
         filter_expr=filter_expr,
         top=top,
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])

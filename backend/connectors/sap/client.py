@@ -37,6 +37,21 @@ def escape_odata_val(val: str) -> str:
     return val.replace("'", "''")
 
 
+def normalize_sap_id(val: Any, length: int = 18) -> Any:
+    """Format SAP numeric identifiers with leading zeros (ALPHA conversion).
+
+    Safely handles None, empty values, integer inputs (e.g. 1001), and string inputs.
+    If the value consists purely of digits and is shorter than target length,
+    left-pads it with leading zeros. Alphanumeric strings remain unchanged.
+    """
+    if val is None or val == "":
+        return val
+    s = str(val).strip()
+    if s.isdigit() and len(s) < length:
+        return s.zfill(length)
+    return s
+
+
 class SAPClient:
     """Manages async HTTP connection lifecycle to an SAP ERP OData API."""
 

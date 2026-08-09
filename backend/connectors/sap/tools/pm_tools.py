@@ -13,7 +13,11 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient, escape_odata_val
+from backend.connectors.sap.client import (
+    SAPClient,
+    escape_odata_val,
+    normalize_sap_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +38,13 @@ async def get_equipment_details(
     :return: Equipment master data dictionary.
     """
     logger.info("PM Tool: get_equipment_details(equipment_id=%s)", equipment_id)
-    escaped_equipment_id = escape_odata_val(equipment_id)
+    escaped_equipment_id = escape_odata_val(normalize_sap_id(equipment_id))
     result = await client.execute_odata_query(
         service_path=EQUIPMENT_SERVICE,
         entity_set="Equipment",
         key=f"'{escaped_equipment_id}'",
     )
-    return result.get("d", result)
+    return result.get("d") or result
 
 
 async def get_maintenance_notifications(
@@ -69,7 +73,7 @@ async def get_maintenance_notifications(
         escaped_plant_id = escape_odata_val(plant_id)
         filters.append(f"MaintenancePlant eq '{escaped_plant_id}'")
     if equipment_id:
-        escaped_equipment_id = escape_odata_val(equipment_id)
+        escaped_equipment_id = escape_odata_val(normalize_sap_id(equipment_id))
         filters.append(f"Equipment eq '{escaped_equipment_id}'")
     if notification_type:
         escaped_notification_type = escape_odata_val(notification_type)
@@ -84,7 +88,7 @@ async def get_maintenance_notifications(
         top=top,
         orderby="LastChangeDateTime desc",
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])
 
 
 async def get_work_orders(
@@ -124,4 +128,42 @@ async def get_work_orders(
         top=top,
         orderby="MaintOrdBasicStartDate desc",
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])
+
+
+async def search_sap_equipment(
+    client: SAPClient,
+    search_text: str,
+    *,
+    plant_id: Optional[str] = None,
+    top: int = 10,
+) -> List[Dict[str, Any]]:
+    """Search SAP equipment master by description text.
+
+    Uses OData V2 substringof() filter on EquipmentName to find equipment
+    matching a natural language description when no exact Equipment ID is known.
+
+    :param client: Connected SAPClient instance.
+    :param search_text: Free-text description to search (e.g. 'Boiler Feed Pump').
+    :param plant_id: Optional filter by maintenance plant.
+    :param top: Maximum number of results to return.
+    :return: List of matching equipment records with Equipment ID and Name.
+    """
+    logger.info("PM Tool: search_sap_equipment(search_text='%s', plant=%s)", search_text, plant_id)
+    escaped_text = escape_odata_val(search_text)
+    filters = [f"substringof('{escaped_text}', EquipmentName)"]
+    if plant_id:
+        escaped_plant_id = escape_odata_val(plant_id)
+        filters.append(f"MaintenancePlant eq '{escaped_plant_id}'")
+
+    filter_expr = " and ".join(filters)
+
+    result = await client.execute_odata_query(
+        service_path=EQUIPMENT_SERVICE,
+        entity_set="Equipment",
+        filter_expr=filter_expr,
+        select_fields=["Equipment", "EquipmentName", "MaintenancePlant", "EquipmentCategory"],
+        top=top,
+    )
+    return (result.get("d") or {}).get("results", [])
+
