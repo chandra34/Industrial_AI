@@ -13,6 +13,8 @@ from backend.connectors.opcua.exceptions import (
     OPCUANotConnectedError,
     OPCUATimeoutError,
 )
+from backend.connectors.opcua.subscription import OPCUASubscriptionManager
+from backend.connectors.opcua.utils import clean_node_id, to_json_safe
 
 __all__ = [
     "OPCUAClient",
@@ -22,4 +24,9 @@ __all__ = [
     "OPCUAAuthenticationError",
     "OPCUATimeoutError",
     "OPCUANotConnectedError",
+    "OPCUASubscriptionManager",
+    "clean_node_id",
+    "to_json_safe",
 ]
+
+
