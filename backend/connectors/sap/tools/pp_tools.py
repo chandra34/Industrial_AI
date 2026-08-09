@@ -11,7 +11,11 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient, escape_odata_val
+from backend.connectors.sap.client import (
+    SAPClient,
+    escape_odata_val,
+    normalize_sap_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +46,7 @@ async def get_production_orders(
         escaped_plant_id = escape_odata_val(plant_id)
         filters.append(f"ProductionPlant eq '{escaped_plant_id}'")
     if material_id:
-        escaped_material_id = escape_odata_val(material_id)
+        escaped_material_id = escape_odata_val(normalize_sap_id(material_id))
         filters.append(f"Material eq '{escaped_material_id}'")
 
     filter_expr = " and ".join(filters) if filters else None
@@ -54,7 +58,7 @@ async def get_production_orders(
         top=top,
         orderby="MfgOrderPlannedStartDate desc",
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])
 
 
 async def get_production_order_operations(
@@ -79,4 +83,4 @@ async def get_production_order_operations(
         top=top,
         orderby="OperationUnit asc",
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])

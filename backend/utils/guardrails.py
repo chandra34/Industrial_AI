@@ -105,6 +105,9 @@ ALLOWED_TOOLS: frozenset[str] = frozenset({
     "get_production_order_operations",
     "get_inspection_lots",
     "get_quality_notifications",
+    "search_sap_equipment",
+    "search_sap_materials",
+
     # OPC UA (read-only telemetry)
     "browse_opcua_nodes",
     "search_opcua_nodes",

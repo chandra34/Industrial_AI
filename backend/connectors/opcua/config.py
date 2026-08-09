@@ -64,3 +64,8 @@ class OPCUAConfig(BaseSettings):
         default="IndustrialAI_OPCUA_Client",
         description="Session display name on OPC UA server",
     )
+    min_catalog_match_score: int = Field(
+        default=2,
+        ge=1,
+        description="Minimum matching keyword count threshold for Tier 2 relaxed OR tag catalog search",
+    )

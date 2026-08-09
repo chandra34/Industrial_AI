@@ -90,7 +90,7 @@ async def search_opcua_nodes(
             if results:
                 return _to_json_safe(results)
             else:
-                logger.info("Tag catalog returned 0 results for '%s'. Catalog may be empty.", search_term)
+                logger.info("Tag catalog returned 0 results for '%s' (Tier 1 + Tier 2). Falling back to live browse.", search_term)
     except Exception as e:
         logger.warning("Local tag catalog search failed, falling back to live browse: %s", e)
 
@@ -491,7 +491,38 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
         {
             "type": "function",
             "function": {
+                "name": "search_sap_equipment",
+                "description": "Search SAP equipment master records by description text. Use this when the user mentions equipment by name but does not provide a specific SAP Equipment ID. Returns matching Equipment IDs and names.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "search_text": {"type": "string", "description": "Free-text equipment description to search (e.g. 'Boiler Feed Pump', 'Mixer Tank')"},
+                        "plant_id": {"type": "string", "description": "Optional SAP Plant ID to narrow results (e.g. '1010')"},
+                    },
+                    "required": ["search_text"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_sap_materials",
+                "description": "Search SAP material master records by description text. Use this when the user mentions a material or spare part by name but does not provide a specific SAP Material Number. Returns matching Material IDs and descriptions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "search_text": {"type": "string", "description": "Free-text material description to search (e.g. 'agitator motor bearing', 'hydraulic seal kit')"},
+                        "language": {"type": "string", "description": "Language key code filter (e.g. 'EN' for English, default 'EN')"},
+                    },
+                    "required": ["search_text"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "search_technical_manuals",
+
                 "description": "Search PDF equipment manuals, SOPs, task deadlines, submission dates, project files, and safety instructions in Vector DB.",
                 "parameters": {
                     "type": "object",

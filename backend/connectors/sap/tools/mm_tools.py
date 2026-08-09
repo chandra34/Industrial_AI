@@ -13,7 +13,11 @@ Standard SAP OData Services Used:
 import logging
 from typing import Any, Dict, List, Optional
 
-from backend.connectors.sap.client import SAPClient, escape_odata_val
+from backend.connectors.sap.client import (
+    SAPClient,
+    escape_odata_val,
+    normalize_sap_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +38,13 @@ async def get_material_master(
     :return: Material master data dictionary.
     """
     logger.info("MM Tool: get_material_master(material_id=%s)", material_id)
-    escaped_material_id = escape_odata_val(material_id)
+    escaped_material_id = escape_odata_val(normalize_sap_id(material_id))
     result = await client.execute_odata_query(
         service_path=PRODUCT_SERVICE,
         entity_set="A_Product",
         key=f"'{escaped_material_id}'",
     )
-    return result.get("d", result)
+    return result.get("d") or result
 
 
 async def check_material_stock(
@@ -56,14 +60,14 @@ async def check_material_stock(
     :return: List of stock position records.
     """
     logger.info("MM Tool: check_material_stock(material=%s, plant=%s)", material_id, plant_id)
-    escaped_material_id = escape_odata_val(material_id)
+    escaped_material_id = escape_odata_val(normalize_sap_id(material_id))
     escaped_plant_id = escape_odata_val(plant_id)
     result = await client.execute_odata_query(
         service_path=MATERIAL_STOCK_SERVICE,
         entity_set="A_MatlStkInAcctMod",
         filter_expr=f"Material eq '{escaped_material_id}' and Plant eq '{escaped_plant_id}'",
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])
 
 
 async def get_bill_of_materials(
@@ -82,7 +86,7 @@ async def get_bill_of_materials(
     :return: List of BOM item records.
     """
     logger.info("MM Tool: get_bill_of_materials(material=%s, plant=%s)", material_id, plant_id)
-    escaped_material_id = escape_odata_val(material_id)
+    escaped_material_id = escape_odata_val(normalize_sap_id(material_id))
     escaped_plant_id = escape_odata_val(plant_id)
     result = await client.execute_odata_query(
         service_path=BOM_SERVICE,
@@ -90,4 +94,38 @@ async def get_bill_of_materials(
         filter_expr=f"Material eq '{escaped_material_id}' and Plant eq '{escaped_plant_id}'",
         top=top,
     )
-    return result.get("d", {}).get("results", [])
+    return (result.get("d") or {}).get("results", [])
+
+
+async def search_sap_materials(
+    client: SAPClient,
+    search_text: str,
+    *,
+    language: str = "EN",
+    top: int = 10,
+) -> List[Dict[str, Any]]:
+    """Search SAP material master by description text.
+
+    Uses OData V2 substringof() filter on ProductDescription to find materials
+    matching a natural language description when no exact Material Number is known.
+
+    :param client: Connected SAPClient instance.
+    :param search_text: Free-text description to search (e.g. 'agitator motor bearing').
+    :param language: Language key code to filter records (default 'EN').
+    :param top: Maximum number of results to return.
+    :return: List of matching material records with Product ID and Description.
+    """
+    logger.info("MM Tool: search_sap_materials(search_text='%s', language='%s')", search_text, language)
+    escaped_text = escape_odata_val(search_text)
+    escaped_lang = escape_odata_val(language)
+    filter_expr = f"substringof('{escaped_text}', ProductDescription) and Language eq '{escaped_lang}'"
+
+    result = await client.execute_odata_query(
+        service_path=PRODUCT_SERVICE,
+        entity_set="A_ProductDescription",
+        filter_expr=filter_expr,
+        select_fields=["Product", "ProductDescription", "Language"],
+        top=top,
+    )
+    return (result.get("d") or {}).get("results", [])
+

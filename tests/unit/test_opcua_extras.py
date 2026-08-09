@@ -265,4 +265,90 @@ async def test_get_opcua_node_attributes_tool_mock():
     assert res["writable"] is True
 
 
+@pytest.mark.asyncio
+async def test_relaxed_or_search_partial_match():
+    """Verify Tier 2 returns results when strict AND would fail due to a typo."""
+    from backend.connectors.opcua.indexer import _relaxed_or_search
+    from backend.database.session import AsyncSessionLocal
+    from backend.database.models import OPCUATagCatalog
+    from sqlalchemy import delete
 
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(OPCUATagCatalog))
+        db.add(OPCUATagCatalog(
+            node_id="ns=2;s=Line1.Pump01.Temp",
+            browse_name="Temperature",
+            display_name="Line 1 Pump 01 Temperature",
+            full_path="Objects > Line_1 > Pump_01 > Temperature",
+            node_class="Variable",
+            parent_node_id="ns=2;s=Line1.Pump01",
+            updated_at=datetime.now(timezone.utc),
+        ))
+        await db.commit()
+
+        results = await _relaxed_or_search(db, ["line", "1", "pump", "01", "temperatur"])
+
+        assert len(results) >= 1
+        assert results[0]["node_id"] == "ns=2;s=Line1.Pump01.Temp"
+        assert results[0]["match_score"] >= 4
+
+        await db.execute(delete(OPCUATagCatalog))
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_relaxed_or_search_insufficient_matches():
+    """Verify Tier 2 filters out rows with match scores below threshold."""
+    from backend.connectors.opcua.indexer import _relaxed_or_search
+    from backend.database.session import AsyncSessionLocal
+    from backend.database.models import OPCUATagCatalog
+    from sqlalchemy import delete
+
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(OPCUATagCatalog))
+        db.add(OPCUATagCatalog(
+            node_id="ns=2;s=Line1.Boiler01.Temp",
+            browse_name="Temperature",
+            display_name="Line 1 Boiler 01 Temperature",
+            full_path="Objects > Line_1 > Boiler_01 > Temperature",
+            node_class="Variable",
+            parent_node_id="ns=2;s=Line1.Boiler01",
+            updated_at=datetime.now(timezone.utc),
+        ))
+        await db.commit()
+
+        results = await _relaxed_or_search(db, ["compressor", "vibration", "sensor"])
+
+        assert len(results) == 0
+
+        await db.execute(delete(OPCUATagCatalog))
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_search_local_tag_catalog_tier2_fallback():
+    """Verify search_local_tag_catalog cascades from Tier 1 to Tier 2 on zero results."""
+    from backend.connectors.opcua.indexer import search_local_tag_catalog
+    from backend.database.session import AsyncSessionLocal
+    from backend.database.models import OPCUATagCatalog
+    from sqlalchemy import delete
+
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(OPCUATagCatalog))
+        db.add(OPCUATagCatalog(
+            node_id="ns=2;s=Line1.Pump01.Temp",
+            browse_name="Temperature",
+            display_name="Line 1 Pump 01 Temperature",
+            full_path="Objects > Line_1 > Pump_01 > Temperature",
+            node_class="Variable",
+            parent_node_id="ns=2;s=Line1.Pump01",
+            updated_at=datetime.now(timezone.utc),
+        ))
+        await db.commit()
+
+        results = await search_local_tag_catalog(db, "pump 01 temperatur line 1")
+        assert len(results) >= 1
+        assert results[0]["node_id"] == "ns=2;s=Line1.Pump01.Temp"
+
+        await db.execute(delete(OPCUATagCatalog))
+        await db.commit()
