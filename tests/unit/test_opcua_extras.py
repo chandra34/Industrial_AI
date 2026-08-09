@@ -352,3 +352,34 @@ async def test_search_local_tag_catalog_tier2_fallback():
 
         await db.execute(delete(OPCUATagCatalog))
         await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_get_alarm_events_numvalues_parameter():
+    """Verify get_alarm_events passes numvalues parameter to read_event_history."""
+    mock_raw_client = MagicMock()
+    from asyncua.client.ua_client import UaClientState
+    mock_raw_client.state = UaClientState.CONNECTED
+
+    client = OPCUAClient()
+    client._client = mock_raw_client
+
+    mock_event = MagicMock()
+    mock_event.Time = "2026-08-09T22:00:00Z"
+    mock_event.EventType = "HighTemperatureAlarm"
+    mock_event.Severity = 900
+    mock_event.Message = "High Temp Trip (120C)"
+
+    mock_node = AsyncMock()
+    mock_node.read_event_history = AsyncMock(return_value=[mock_event])
+    mock_raw_client.get_node.return_value = mock_node
+
+    reader = OPCUAReader(client)
+    res = await reader.get_alarm_events("ns=2;s=Line1.Pump01", num_events=5)
+
+    # Verify read_event_history was called with numvalues=5
+    mock_node.read_event_history.assert_called_once_with(numvalues=5)
+    assert res["event_count"] == 1
+    assert res["events"][0]["event_type"] == "HighTemperatureAlarm"
+    assert res["events"][0]["severity"] == 900
+

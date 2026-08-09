@@ -356,7 +356,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "get_equipment_details",
-                "description": "Get equipment specs, location, and master details from SAP.",
+                "description": "Get equipment specs, location, and master details from SAP. Requires exact numerical SAP Equipment ID (e.g. '10004921'). If Equipment ID is unknown or user mentions equipment by name, call search_sap_equipment first.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -376,7 +376,8 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                     "properties": {
                         "plant_id": {"type": "string", "description": "SAP Plant ID"},
                         "equipment_id": {"type": "string", "description": "Equipment ID"},
-                        "top": {"type": "integer", "default": 5},
+                        "notification_type": {"type": "string", "description": "Notification type (e.g. 'M1' breakdown, 'M2' malfunction)"},
+                        "top": {"type": "integer", "default": 50},
                     },
                 },
             },
@@ -391,7 +392,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                     "properties": {
                         "plant_id": {"type": "string", "description": "SAP Plant ID"},
                         "order_type": {"type": "string", "description": "Order type (e.g. 'PM01')"},
-                        "system_status": {"type": "string", "description": "Status string"},
+                        "system_status": {"type": "string", "description": "Status string (e.g. 'REL' released, 'TECO' technically complete)"},
                         "top": {"type": "integer", "default": 50},
                     },
                 },
@@ -407,6 +408,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                     "properties": {
                         "plant_id": {"type": "string", "description": "SAP Plant ID"},
                         "material_id": {"type": "string", "description": "Material ID"},
+                        "status": {"type": "string", "description": "Filter by order status (e.g. 'REL' released, 'TECO' technically complete)"},
                         "top": {"type": "integer", "default": 50},
                     },
                 },

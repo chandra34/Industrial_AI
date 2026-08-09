@@ -162,8 +162,8 @@ async def test_sap_odata_query_404():
 
 @pytest.mark.asyncio
 async def test_sap_tools_registry():
-    """Verify ALL_SAP_TOOLS exports all 10 universal tool functions."""
-    assert len(ALL_SAP_TOOLS) == 10
+    """Verify ALL_SAP_TOOLS exports all 12 universal tool functions."""
+    assert len(ALL_SAP_TOOLS) == 12
     assert "get_equipment_details" in ALL_SAP_TOOLS
     assert "check_material_stock" in ALL_SAP_TOOLS
     assert "get_production_orders" in ALL_SAP_TOOLS
@@ -226,3 +226,32 @@ async def test_pm_tool_quote_escaping():
         args, kwargs = client._client.get.call_args
         params = kwargs.get("params", {})
         assert params.get("$filter") == "Material eq 'MAT''001' and Plant eq 'PL''10'"
+
+
+@pytest.mark.asyncio
+async def test_pm_tool_get_work_orders_status_filter():
+    """Verify get_work_orders includes system_status in OData filter expression."""
+    from backend.connectors.sap.tools.pm_tools import get_work_orders
+
+    config = SAPConfig(
+        base_url="https://mock-sap.example.com",
+        auth_type="basic",
+        username="user",
+        password="pass",
+        _env_file=None,
+    )
+    async with SAPClient(config) as client:
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"d": {"results": []}}
+        client._client.get = AsyncMock(return_value=mock_response)
+
+        await get_work_orders(client, plant_id="1010", system_status="REL")
+
+        client._client.get.assert_called_once()
+        _, kwargs = client._client.get.call_args
+        params = kwargs.get("params", {})
+        filter_str = params.get("$filter", "")
+        assert "MaintenancePlanningPlant eq '1010'" in filter_str
+        assert "substringof('REL', ConcatenatedActiveSystStsName)" in filter_str
+

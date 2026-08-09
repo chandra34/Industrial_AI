@@ -236,7 +236,7 @@ class OPCUAReader:
         node = self.client.raw_client.get_node(machine_node_id)
 
         try:
-            event_records = await node.read_event_history(num_events=num_events)
+            event_records = await node.read_event_history(numvalues=num_events)
             formatted_events = []
             for ev in (event_records or []):
                 formatted_events.append({
