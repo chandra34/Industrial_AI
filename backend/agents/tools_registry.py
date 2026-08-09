@@ -47,17 +47,11 @@ async def search_technical_manuals(
 from backend.connectors.opcua import OPCUAClient
 from backend.connectors.opcua.browser import OPCUABrowser
 from backend.connectors.opcua.reader import OPCUAReader
+from backend.connectors.opcua.utils import to_json_safe
 
+# Alias for agent tools payload formatting
+_to_json_safe = to_json_safe
 
-def _to_json_safe(val: Any) -> Any:
-    """Convert custom OPC UA objects, datetimes, or bytes into JSON-serializable primitives."""
-    if val is None or isinstance(val, (int, float, str, bool)):
-        return val
-    if isinstance(val, (list, tuple)):
-        return [_to_json_safe(item) for item in val]
-    if isinstance(val, dict):
-        return {str(k): _to_json_safe(v) for k, v in val.items()}
-    return str(val)
 
 
 # OPC UA OT Sensor Telemetry Tool Functions
@@ -240,6 +234,84 @@ async def get_opcua_alarm_events(
     }
 
 
+
+async def read_multiple_opcua_nodes(
+    node_ids: List[str],
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Read live numerical sensor values for multiple OPC UA node IDs in a single batch call."""
+    logger.info("OPC UA Tool: read_multiple_opcua_nodes(node_ids=%s)", node_ids)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.read_multiple_nodes(node_ids)
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA read_multiple_opcua_nodes error: %s", e)
+            return {"error": f"Failed to batch read OPC UA node values: {e}"}
+    return {nid: 87.5 for nid in node_ids}
+
+
+async def read_opcua_history_at_time(
+    node_id: str,
+    timestamps: List[str],
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Read historical raw value snapshots for specific discrete ISO timestamps (IEC 62541-11 ReadAtTime)."""
+    logger.info("OPC UA Tool: read_opcua_history_at_time(node_id='%s', timestamps=%s)", node_id, timestamps)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.history_read_at_time(node_id=node_id, timestamps=timestamps)
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA read_opcua_history_at_time error: %s", e)
+            return {"node_id": node_id, "error": f"Failed to read history at time: {e}"}
+    return {
+        "node_id": node_id,
+        "snapshot_count": len(timestamps),
+        "readings": [
+            {
+                "requested_time": ts,
+                "value": 85.0,
+                "status": "Good",
+                "source_timestamp": ts,
+            }
+            for ts in timestamps
+        ],
+    }
+
+
+async def get_opcua_node_attributes(
+    node_id: str,
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Read full OPC UA node specification attributes (data type, access levels, writable flags, description)."""
+    logger.info("OPC UA Tool: get_opcua_node_attributes(node_id='%s')", node_id)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.get_node_attributes(node_id=node_id)
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA get_opcua_node_attributes error: %s", e)
+            return {"node_id": node_id, "error": f"Failed to read node attributes: {e}"}
+    return {
+        "node_id": node_id,
+        "node_class": "Variable",
+        "browse_name": "Sensor",
+        "data_type": "Float",
+        "access_level": ["CurrentRead", "CurrentWrite"],
+        "user_access_level": ["CurrentRead"],
+        "description": "Simulation Sensor",
+        "value_rank": -1,
+        "writable": True,
+    }
+
+
+
+
+
 # Combined dictionary of all executable tool functions across SAP, OPC UA, and Vector RAG
 ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     **ALL_SAP_TOOLS,
@@ -247,9 +319,12 @@ ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     "browse_opcua_nodes": browse_opcua_nodes,
     "search_opcua_nodes": search_opcua_nodes,
     "read_opcua_node_value": read_opcua_node_value,
+    "read_multiple_opcua_nodes": read_multiple_opcua_nodes,
     "read_opcua_node_details": read_opcua_node_details,
+    "get_opcua_node_attributes": get_opcua_node_attributes,
     "read_machine_telemetry": read_machine_telemetry,
     "read_opcua_node_history": read_opcua_node_history,
+    "read_opcua_history_at_time": read_opcua_history_at_time,
     "get_opcua_alarm_events": get_opcua_alarm_events,
 }
 
@@ -460,7 +535,7 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "read_opcua_node_value",
-                "description": "Read current live numerical or string value from an OPC UA sensor node ID. Do not use for business data, materials, or manual documentation.",
+                "description": "Read current raw scalar value (number/string) for a single OPC UA sensor node when quality status code and timestamps are NOT needed. Fastest single-attribute read.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -474,16 +549,17 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "read_opcua_node_details",
-                "description": "Read detailed OPC UA telemetry metadata including value, quality status code, and timestamps.",
+                "description": "Read full OPC UA telemetry details including raw value, quality status code ('Good'/'Bad'), source timestamp, and server timestamp. Use when diagnostic validation, timestamp history verification, or sensor health status is required.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "node_id": {"type": "string", "description": "OPC UA Node ID"},
+                        "node_id": {"type": "string", "description": "OPC UA Node ID (e.g. 'ns=2;i=10842')"},
                     },
                     "required": ["node_id"],
                 },
             },
         },
+
         {
             "type": "function",
             "function": {
@@ -527,6 +603,57 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                         "num_events": {"type": "integer", "description": "Max recent alarm events to return (default 10)"},
                     },
                     "required": ["machine_node_id"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_multiple_opcua_nodes",
+                "description": "Read live numerical sensor readings for a list of OPC UA node IDs in a single batch network call.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of OPC UA Node IDs (e.g. ['ns=2;i=10842', 'ns=2;i=10843'])"
+                        },
+                    },
+                    "required": ["node_ids"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_opcua_history_at_time",
+                "description": "Read historical raw value snapshots for specific discrete ISO timestamps (IEC 62541-11 ReadAtTime). Use when the user asks for exact values at specific timestamp moments (e.g. 'what was the temperature at exactly 2:00 PM and 3:00 PM?').",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string", "description": "OPC UA Node ID (e.g. 'ns=3;i=1003')"},
+                        "timestamps": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of ISO 8601 timestamps (e.g. ['2026-08-03T14:00:00Z', '2026-08-03T15:00:00Z'])"
+                        },
+                    },
+                    "required": ["node_id", "timestamps"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_opcua_node_attributes",
+                "description": "Read full OPC UA node specification attributes and PLC tag metadata (data type e.g. Int32/Float, access levels e.g. CurrentRead/CurrentWrite, description, value rank, writable flag). Use when asking if a tag is writable or checking PLC data schema.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string", "description": "OPC UA Node ID (e.g. 'ns=2;i=10842')"},
+                    },
+                    "required": ["node_id"],
                 },
             },
         },
