@@ -13,10 +13,11 @@ import { useDocuments } from './hooks/useDocuments';
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const SafetyReviewDashboard = lazy(() => import('./components/SafetyReviewDashboard'));
 const AgentChatArea = lazy(() => import('./components/AgentChatArea'));
+const TagCatalogPanel = lazy(() => import('./components/TagCatalogPanel'));
 
 /**
  * The main App layout component managing the RAG application lifecycle.
- * Orchestrates views (chat, agent, documents, settings, safety reviews) and coordinates
+ * Orchestrates views (chat, agent, review, tagCatalog, documents, settings) and coordinates
  * state slices fetched via decoupled custom hooks.
  *
  * @component
@@ -25,7 +26,7 @@ const AgentChatArea = lazy(() => import('./components/AgentChatArea'));
 export default function App() {
   const { user } = useAuth();
   
-  /** @type {['chat'|'agent'|'review'|'documents'|'settings', function(string): void]} */
+  /** @type {['chat'|'agent'|'review'|'tagCatalog'|'documents'|'settings', function(string): void]} */
   const [activeView, setActiveView] = useState('chat');
   
   /** @type {[boolean, function(boolean): void]} */
@@ -117,6 +118,10 @@ export default function App() {
 
             {activeView === 'review' && (
               <SafetyReviewDashboard />
+            )}
+
+            {activeView === 'tagCatalog' && (
+              <TagCatalogPanel />
             )}
 
 

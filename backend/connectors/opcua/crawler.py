@@ -104,19 +104,21 @@ class OPCUATagCrawler:
                 browse_name_obj = await child.read_browse_name()
                 browse_name = browse_name_obj.Name
 
-                # Skip internal OPC UA protocol diagnostic folder (Objects > Server)
+                # Crawl internal OPC UA system folder (Objects > Server) to reach custom folders like Server > Boilers
                 if depth == 1 and browse_name == "Server":
-                    logger.debug("Skipping internal OPC UA system folder: Objects > Server")
+                    pass
+
+                # Skip dummy OPC UA memory buffer test folder
+                if browse_name == "MemoryBuffers":
                     continue
 
                 node_class_obj = await child.read_node_class()
                 node_class = getattr(node_class_obj, "name", str(node_class_obj))
                 child_path = f"{path} > {browse_name}"
 
-
-                # Build human-readable display name from path segments
+                # Build human-readable display name from path segments (normalize # -> space)
                 display_name = " ".join(
-                    seg.replace("_", " ")
+                    seg.replace("_", " ").replace("#", " ")
                     for seg in child_path.split(" > ")
                     if seg != "Objects"
                 )

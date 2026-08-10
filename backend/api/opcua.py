@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.auth import get_current_user, FirebaseUser
@@ -21,7 +21,7 @@ from backend.connectors.opcua.config import OPCUAConfig
 from backend.connectors.opcua.crawler import OPCUATagCrawler
 from backend.connectors.opcua.indexer import get_catalog_status
 from backend.database.session import get_db, AsyncSessionLocal
-from backend.database.models import OPCUAConnectionProfile
+from backend.database.models import OPCUAConnectionProfile, OPCUATagCatalog
 from backend.utils.crypto import encrypt_password, decrypt_password
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,78 @@ async def get_opcua_catalog_status(
     """Return the current OPC UA tag catalog status (tag count and last sync time)."""
     status = await get_catalog_status(db)
     return status
+
+
+@router.get("/tags")
+async def list_opcua_tags(
+    search: str = "",
+    page: int = 1,
+    page_size: int = 50,
+    node_class: Optional[str] = None,
+    current_user: FirebaseUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return paginated OPC UA tag catalog entries with optional keyword filtering.
+
+    Query params:
+        search: Free-text keyword filter applied across display_name, browse_name, full_path, node_id.
+        page: 1-indexed page number (default 1).
+        page_size: Results per page (default 50, max 200).
+        node_class: Optional filter by node class ('Variable' or 'Object').
+    """
+    page_size = min(page_size, 200)
+    offset = (max(page, 1) - 1) * page_size
+
+    base_filter = []
+
+    if node_class:
+        base_filter.append(OPCUATagCatalog.node_class == node_class)
+
+    if search.strip():
+        keywords = search.lower().split()
+        for kw in keywords:
+            pattern = f"%{kw}%"
+            base_filter.append(
+                or_(
+                    func.lower(OPCUATagCatalog.display_name).like(pattern),
+                    func.lower(OPCUATagCatalog.browse_name).like(pattern),
+                    func.lower(OPCUATagCatalog.full_path).like(pattern),
+                    func.lower(OPCUATagCatalog.node_id).like(pattern),
+                )
+            )
+
+    count_stmt = select(func.count(OPCUATagCatalog.node_id)).where(*base_filter) if base_filter else select(func.count(OPCUATagCatalog.node_id))
+    count_result = await db.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    data_stmt = (
+        select(OPCUATagCatalog)
+        .where(*base_filter) if base_filter else select(OPCUATagCatalog)
+    )
+    data_stmt = data_stmt.order_by(OPCUATagCatalog.display_name).offset(offset).limit(page_size)
+
+    result = await db.execute(data_stmt)
+    rows = result.scalars().all()
+
+    return {
+        "tags": [
+            {
+                "node_id": tag.node_id,
+                "display_name": tag.display_name,
+                "browse_name": tag.browse_name,
+                "full_path": tag.full_path,
+                "node_class": tag.node_class,
+                "data_type": tag.data_type,
+                "unit": tag.unit,
+            }
+            for tag in rows
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, -(-total // page_size)),
+    }
+
 
 
 @router.get("/profiles", response_model=List[OPCUAProfileResponse])

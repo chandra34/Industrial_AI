@@ -246,6 +246,24 @@ export async function getOpcuaCatalogStatus() {
 }
 
 /**
+ * Fetches paginated OPC UA tag catalog entries with optional search filtering.
+ *
+ * @async
+ * @param {Object} [params={}] - Query parameters.
+ * @param {string} [params.search=''] - Keyword search filter.
+ * @param {number} [params.page=1] - Page number (1-indexed).
+ * @param {number} [params.pageSize=50] - Results per page.
+ * @param {string|null} [params.nodeClass=null] - Filter by node class ('Variable' or 'Object').
+ * @returns {Promise<{tags: Array, total: number, page: number, page_size: number, total_pages: number}>}
+ */
+export async function getOpcuaTags({ search = '', page = 1, pageSize = 50, nodeClass = null } = {}) {
+  const params = new URLSearchParams({ search, page: String(page), page_size: String(pageSize) });
+  if (nodeClass) params.set('node_class', nodeClass);
+  return request('GET', `/opcua/tags?${params.toString()}`);
+}
+
+
+/**
  * Fetches all saved OPC UA connection profiles.
  *
  * @async
