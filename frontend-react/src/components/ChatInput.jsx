@@ -46,7 +46,7 @@ export default function ChatInput({ onSend, onUploadClick, disabled }) {
       <form className="chat-input-form" onSubmit={handleSubmit}>
         <textarea
           className="chat-input-textarea"
-          placeholder="Ask a follow-up question..."
+          placeholder="Ask about live sensors, SAP inventory, or OEM SOPs..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}

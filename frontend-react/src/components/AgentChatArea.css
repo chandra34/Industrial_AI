@@ -15,50 +15,83 @@
 .agent-welcome {
   max-width: var(--content-max-width);
   margin: 0 auto 32px;
+  text-align: center;
+}
+
+.agent-system-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bot-bubble-bg);
+  border: 1px solid var(--border-light);
+  padding: 6px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+
+.agent-badge-icon {
+  font-size: 14px;
 }
 
 .agent-welcome-title {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.agent-welcome-desc {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+/* Capability Cards Grid */
+.agent-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  text-align: left;
+}
+
+.agent-capability-card {
+  background: var(--bot-bubble-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.agent-capability-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(108, 99, 255, 0.08);
+}
+
+.agent-card-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.agent-card-title {
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
 
-.agent-welcome-subtitle {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
-
-.agent-welcome-desc {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
-
-.agent-welcome-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.agent-chip {
-  background: var(--bot-bubble-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  padding: 8px 16px;
+.agent-card-desc {
   font-size: 13px;
-  font-weight: 500;
-  box-shadow: var(--bot-bubble-shadow);
-  transition: all 0.2s ease;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
-.agent-chip:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: translateY(-1px);
+@media (max-width: 640px) {
+  .agent-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Messages List */

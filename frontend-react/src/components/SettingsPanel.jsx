@@ -26,6 +26,9 @@ import {
  * @returns {React.JSX.Element} The rendered settings interface.
  */
 export default function SettingsPanel({ topK, onTopKChange }) {
+  // Active Settings Category Sub-Tab ('retrieval' | 'opcua' | 'sap')
+  const [activeTab, setActiveTab] = useState('retrieval');
+
   // Catalog Status State
   const [catalogStatus, setCatalogStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -350,39 +353,67 @@ export default function SettingsPanel({ topK, onTopKChange }) {
     <div className={styles.settingsContainer}>
       <h2 className={styles.settingsTitle}>Settings</h2>
 
-      {/* ── Retrieval Settings Card ── */}
-      <div className={styles.settingsCard}>
-        <h3 className={styles.settingsSubtitle}>Retrieval Settings</h3>
-        <p className={styles.settingsDescription}>
-          Adjust the retrieval parameters used during query execution.
-        </p>
-
-        <div className={styles.settingsGroup}>
-          <div className={styles.settingsRow}>
-            <label className={styles.settingsLabel} htmlFor="topk-slider">
-              Top-K Retrieval Depth:
-            </label>
-            <span className={styles.settingsValue}>
-              {topK} chunks
-            </span>
-          </div>
-          <input
-            id="topk-slider"
-            className={styles.settingsSlider}
-            type="range"
-            min="1"
-            max="20"
-            value={topK}
-            onChange={(e) => onTopKChange(parseInt(e.target.value, 10) || 5)}
-          />
-          <p className={styles.settingsHint}>
-            Select how many highly relevant context chunks from your PDF documents are fetched and supplied to the language model. Higher values provide more context but use more tokens.
-          </p>
-        </div>
+      {/* ── Sub-Tabs Navigation Bar ── */}
+      <div className={styles.settingsTabs}>
+        <button
+          type="button"
+          className={`${styles.tabBtn} ${activeTab === 'retrieval' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('retrieval')}
+        >
+          🔍 RAG Retrieval
+        </button>
+        <button
+          type="button"
+          className={`${styles.tabBtn} ${activeTab === 'opcua' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('opcua')}
+        >
+          ⚡ OPC UA Connector
+        </button>
+        <button
+          type="button"
+          className={`${styles.tabBtn} ${activeTab === 'sap' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('sap')}
+        >
+          📦 SAP ERP Connector
+        </button>
       </div>
 
-      {/* ── OPC UA Industrial Connector Card ── */}
-      <div className={styles.settingsCard} style={{ marginTop: '16px' }}>
+      {/* ── Tab 1: Retrieval Settings Card ── */}
+      {activeTab === 'retrieval' && (
+        <div className={styles.settingsCard}>
+          <h3 className={styles.settingsSubtitle}>Retrieval Settings</h3>
+          <p className={styles.settingsDescription}>
+            Adjust the retrieval parameters used during query execution.
+          </p>
+
+          <div className={styles.settingsGroup}>
+            <div className={styles.settingsRow}>
+              <label className={styles.settingsLabel} htmlFor="topk-slider">
+                Top-K Retrieval Depth:
+              </label>
+              <span className={styles.settingsValue}>
+                {topK} chunks
+              </span>
+            </div>
+            <input
+              id="topk-slider"
+              className={styles.settingsSlider}
+              type="range"
+              min="1"
+              max="20"
+              value={topK}
+              onChange={(e) => onTopKChange(parseInt(e.target.value, 10) || 5)}
+            />
+            <p className={styles.settingsHint}>
+              Select how many highly relevant context chunks from your PDF documents are fetched and supplied to the language model. Higher values provide more context but use more tokens.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab 2: OPC UA Industrial Connector Card ── */}
+      {activeTab === 'opcua' && (
+        <div className={styles.settingsCard}>
         <h3 className={styles.settingsSubtitle}>🔌 OPC UA Industrial Connector</h3>
         <p className={styles.settingsDescription}>
           Connect and synchronize dynamic PLC address spaces with the local AI tag catalog for instant machine lookups.
@@ -606,15 +637,16 @@ export default function SettingsPanel({ topK, onTopKChange }) {
             </div>
           </form>
         </div>
-
       </div>
+      )}
 
-      {/* ── SAP S/4HANA ERP Connector Card ── */}
-      <div className={styles.settingsCard} style={{ marginTop: '16px' }}>
-        <h3 className={styles.settingsSubtitle}>💼 SAP S/4HANA ERP Connector</h3>
-        <p className={styles.settingsDescription}>
-          Connect and switch SAP S/4HANA or SAP ECC enterprise environments dynamically for live Equipment, Maintenance Order, and BOM queries.
-        </p>
+      {/* ── Tab 3: SAP S/4HANA ERP Connector Card ── */}
+      {activeTab === 'sap' && (
+        <div className={styles.settingsCard}>
+          <h3 className={styles.settingsSubtitle}>💼 SAP S/4HANA ERP Connector</h3>
+          <p className={styles.settingsDescription}>
+            Connect and switch SAP S/4HANA or SAP ECC enterprise environments dynamically for live Equipment, Maintenance Order, and BOM queries.
+          </p>
 
         {/* Dynamic Connection Status Indicator */}
         <div className={styles.activeConnectionBlock}>
@@ -871,8 +903,8 @@ export default function SettingsPanel({ topK, onTopKChange }) {
             </div>
           </form>
         </div>
-
       </div>
+      )}
     </div>
   );
 }

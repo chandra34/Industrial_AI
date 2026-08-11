@@ -29,34 +29,40 @@ export default function AgentChatArea({ messages, isLoading, onSend }) {
       <div className="agent-chat-scroll" ref={scrollRef}>
         {/* Welcome Header */}
         <div className="agent-welcome">
-          <h1 className="agent-welcome-title">Industrial AI Agent 🤖</h1>
-          <h2 className="agent-welcome-subtitle">Ask anything about plant operations</h2>
+          <div className="agent-system-badge">
+            <span className="agent-badge-icon">⚡</span>
+            <span>Industrial AI Multi-Agent System</span>
+          </div>
+
+          <h1 className="agent-welcome-title">Plant Operations Intelligence</h1>
           <p className="agent-welcome-desc">
-            I'll query SAP ERP (stock, work orders), OPC UA sensors, and technical manuals to give you ground-truth answers.
+            Query real-time OPC UA machine telemetry, SAP ERP inventory, and OEM technical manuals.
           </p>
 
-          <div className="agent-welcome-chips">
-            <button
-              type="button"
-              className="agent-chip"
-              onClick={() => onSend('Check stock for bearing SKF-6214 in plant 1010')}
-            >
-              📦 Check bearing stock
-            </button>
-            <button
-              type="button"
-              className="agent-chip"
-              onClick={() => onSend('Show active work orders for plant 1010')}
-            >
-              🔧 Active work orders
-            </button>
-            <button
-              type="button"
-              className="agent-chip"
-              onClick={() => onSend('Search technical manuals for equipment maintenance safety guidelines')}
-            >
-              📖 Maintenance safety SOP
-            </button>
+          <div className="agent-cards-grid">
+            <div className="agent-capability-card">
+              <div className="agent-card-icon">📦</div>
+              <h3 className="agent-card-title">SAP Spare Parts Inventory</h3>
+              <p className="agent-card-desc">Query material master data, stock availability, and warehouse locations.</p>
+            </div>
+
+            <div className="agent-capability-card">
+              <div className="agent-card-icon">⚡</div>
+              <h3 className="agent-card-title">Live Machine Sensors</h3>
+              <p className="agent-card-desc">Inspect real-time PLC telemetry, vibration, temperature, and alarm logs.</p>
+            </div>
+
+            <div className="agent-capability-card">
+              <div className="agent-card-icon">🔧</div>
+              <h3 className="agent-card-title">SAP Plant Maintenance</h3>
+              <p className="agent-card-desc">View active maintenance work orders, equipment history, and inspection lots.</p>
+            </div>
+
+            <div className="agent-capability-card">
+              <div className="agent-card-icon">🛡️</div>
+              <h3 className="agent-card-title">OEM Manuals &amp; PTW Compliance</h3>
+              <p className="agent-card-desc">Search technical manuals, torque limits, and audit Permit-to-Work safety rules.</p>
+            </div>
           </div>
         </div>
 

@@ -128,40 +128,38 @@ export default function LandingPage() {
             <div className="hero-content">
               <div className="hero-badge">
                 <span className="badge-icon">⚡</span>
-                <span>Now with Hybrid Dense-Sparse Search</span>
+                <span>Industrial AI Agents • SAP ERP + OPC UA Telemetry</span>
               </div>
 
               <h1 className="hero-title">
-                Understand Documents, <br />
-                <span className="gradient-text">Just Ask.</span>
+                Industry Intelligence. <br />
+                <span className="gradient-text">Let AI Agents Understand Your Machines.</span>
               </h1>
 
               <p className="hero-description">
-                Upload your technical manuals, contracts, or reports. Our system parses structures,
-                extracts tables, indexes dense semantics, and maps sparse keywords. Ask questions in plain language
-                and get verified, source-cited responses in seconds.
+                Connect your factory floor to intelligent AI agents. From real-time OPC UA telemetry and SAP ERP work orders to OEM manuals and safety SOPs—ask complex operational questions and get verified, ground-truth answers in seconds.
               </p>
 
               <div className="hero-ctas">
                 <button onClick={() => setShowAuthModal('signup')} className="btn-hero-primary">
-                  Get Started Free →
+                  Launch Factory Agent →
                 </button>
                 <button onClick={() => scrollToSection('features')} className="btn-hero-secondary">
-                  View Features
+                  Explore Industrial Tools
                 </button>
               </div>
 
               <div className="hero-social-info">
                 <div className="social-users">
-                  <span className="users-count">Hundreds of users</span> worldwide
+                  <span className="users-count">Built for Plant Engineers & Maintenance Ops</span>
                 </div>
                 <div className="social-benefits">
-                  <span>Free tier</span> • <span>No credit card</span> • <span>Cancel anytime</span>
+                  <span>Zero-Hallucination Guardrails</span> • <span>Read-Only Safety Protocol</span> • <span>SAP & OPC UA Ready</span>
                 </div>
               </div>
             </div>
 
-            {/* --- RIGHT COLUMN: APP MOCKUP --- */}
+            {/* --- RIGHT COLUMN: INDUSTRIAL APP MOCKUP --- */}
             <div className="hero-mockup-container">
               <div className="mac-window">
                 <div className="window-header">
@@ -170,7 +168,7 @@ export default function LandingPage() {
                     <span className="dot yellow"></span>
                     <span className="dot green"></span>
                   </div>
-                  <div className="window-title">rag-workspace (active)</div>
+                  <div className="window-title">industrial-agent (OPC UA + SAP Active)</div>
                 </div>
 
                 <div className="window-body">
@@ -185,39 +183,38 @@ export default function LandingPage() {
                     <div className="mockup-chat-header">
                       <div className="mockup-avatar"></div>
                       <div className="mockup-header-text">
-                        <span className="mockup-bot-name">Document Assistant</span>
-                        <span className="mockup-bot-status">ready</span>
+                        <span className="mockup-bot-name">Plant Multi-Agent Orchestrator</span>
+                        <span className="mockup-bot-status">● connected to OPC UA &amp; SAP ERP</span>
                       </div>
                     </div>
 
                     <div className="mockup-messages">
                       <div className="mockup-msg user">
                         <div className="msg-bubble">
-                          Explain the Siemens Turbine cooling valve safety parameters.
+                          Turbine #4 vibration alert triggered. Check live telemetry, SAP stock for bearings, and OEM torque limits.
                         </div>
                       </div>
 
                       <div className="mockup-retrieval-status">
                         <div className="spinner"></div>
-                        <span>Searching Milvus (Dense + Sparse Hybrid Search)...</span>
+                        <span>Agent: OPC UA Read → SAP Stock → Milvus RAG Search...</span>
                       </div>
 
                       <div className="mockup-msg bot">
                         <div className="msg-bubble">
-                          Based on the Siemens OEM Manual, the cooling valve must trigger at
-                          <strong> 150°C</strong> or if pressure exceeds <strong>12.4 bar</strong>.
-                          A redundant secondary bypass opens in 45 milliseconds.
+                          Turbine #4 vibration is currently elevated at <strong>4.8 mm/s</strong> (threshold: 3.5 mm/s). SAP records confirm <strong>14 units</strong> of replacement bearing BRG-6210-2RS in stock at Warehouse 1000. Per Siemens SOP Page 84, housing bolts must be torqued to <strong>120 Nm</strong>.
 
                           <div className="mockup-sources">
-                            <span className="source-tag">siemens-manual.pdf • Page 24</span>
-                            <span className="source-tag">spec-sheet-v2.pdf • Page 3</span>
+                            <span className="source-tag">OPC UA • Live Telemetry</span>
+                            <span className="source-tag">SAP MM • Warehouse 1000</span>
+                            <span className="source-tag">Siemens-SOP.pdf • Page 84</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="mockup-chat-input">
-                      <div className="input-placeholder">Ask about your documents...</div>
+                      <div className="input-placeholder">Ask about telemetry, SAP stock, or SOPs...</div>
                       <div className="mockup-send-btn"></div>
                     </div>
                   </div>
@@ -226,75 +223,68 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* --- TRUSTED BY ROW --- */}
-          <section className="trusted-section">
-            <p className="trusted-title">TRUSTED BY TEAMS AT</p>
-            <div className="trusted-logos">
-              <div className="logo-item">CloudNine</div>
-              <div className="logo-item">DataPulse</div>
-              <div className="logo-item">SwiftOps</div>
-              <div className="logo-item">BrightPath</div>
-              <div className="logo-item">CoreStack</div>
-              <div className="logo-item">Zenith</div>
-              <div className="logo-item">TechFlow</div>
-              <div className="logo-item">NovaDesk</div>
-            </div>
-          </section>
-
-          {/* --- FEATURES GRID --- */}
+          {/* --- ENTERPRISE CAPABILITIES --- */}
           <section id="features" className="features-section">
-            <h2 className="section-title">Everything You Need to <span className="gradient-text">Understand Data</span></h2>
-            <p className="section-subtitle">Structure-aware ingestion, multi-vector retrieval, and lightning-fast pipelines.</p>
+            <h2 className="section-title">Enterprise <span className="gradient-text">Capabilities</span></h2>
+            <p className="section-subtitle">Built for industrial reliability and safety. Unifying plant telemetry, enterprise ERP, and technical manuals into zero-hallucination AI agents.</p>
 
             <div className="features-grid">
-              {/* Card 1 */}
+              {/* Card 1: IT/OT Orchestration */}
               <div className="feature-card">
                 <div className="card-header">
                   <div className="feature-icon bg-cyan">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                      <polyline points="10 9 9 9 8 9" />
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
                     </svg>
                   </div>
-                  <h3 className="card-title">Structure-Aware Parsing</h3>
+                  <h3 className="card-title">Unified IT &amp; OT Orchestration</h3>
                 </div>
                 <p className="card-text">
-                  Extract headers, logical section trees, tables, and image captions cleanly using the Docling pipeline. No more broken layout summaries or scrambled tables.
+                  Query live machine telemetry via OPC UA alongside SAP ERP Plant Maintenance and stock inventory. Diagnose issues across IT and OT systems in a single prompt.
                 </p>
                 <div className="card-mockup parsing-mockup">
-                  <div className="parsing-line"><span>[Header 1 &gt; Safety Settings]</span></div>
-                  <div className="parsing-table">
-                    <div className="table-header"><span>Temp</span><span>Limit</span></div>
-                    <div className="table-row"><span>150°C</span><span>45ms</span></div>
-                  </div>
+                  <div className="parsing-line"><span>&gt; OPC UA: ns=2;s=Turbine4.Vibration → 4.8 mm/s</span></div>
+                  <div className="parsing-line"><span>&gt; SAP MM: BRG-6210-2RS → 14 units in stock</span></div>
                 </div>
               </div>
 
-              {/* Card 2 */}
+              {/* Card 2: Structure-Aware RAG */}
               <div className="feature-card">
                 <div className="card-header">
                   <div className="feature-icon bg-blue">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8" />
                       <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      <line x1="11" y1="8" x2="11" y2="14" />
-                      <line x1="8" y1="11" x2="14" y2="11" />
                     </svg>
                   </div>
-                  <h3 className="card-title">Hybrid Search &amp; Reranking</h3>
+                  <h3 className="card-title">Structure-Aware Technical RAG</h3>
                 </div>
                 <p className="card-text">
-                  Combines Milvus dense semantic embeddings (Gemini/OpenAI) and sparse BM25 keyword matrices. Reranks final results using Cross-Encoders for maximal citation accuracy.
+                  Parse complex tables, section hierarchies, and OEM specifications from technical manuals. Hybrid dense-sparse search with cross-encoder reranking delivers page-precise citations.
                 </p>
                 <div className="card-mockup search-mockup">
-                  <div className="search-pill sparse">Sparse Keywords: "safety valve limit"</div>
-                  <div className="search-plus">+</div>
-                  <div className="search-pill dense">Dense Semantics: [0.12, -0.45, 0.89...]</div>
-                  <div className="search-result">Reciprocal Rank Fusion (RRF) -&gt; Match: 99.4%</div>
+                  <div className="search-pill sparse">Query: "turbine cooling valve torque limit"</div>
+                  <div className="search-plus">↓</div>
+                  <div className="search-pill dense">Hybrid Search: Dense Semantics + Sparse Keywords</div>
+                  <div className="search-result">Matched: Siemens-SOP.pdf • Page 84 (99.4%)</div>
                 </div>
+              </div>
+
+              {/* Card 3: Guardrails & Safety Audits */}
+              <div className="feature-card feature-card-full">
+                <div className="card-header">
+                  <div className="feature-icon bg-emerald">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                  </div>
+                  <h3 className="card-title">Production Guardrails &amp; Safety Audits</h3>
+                </div>
+                <p className="card-text">
+                  Strict read-only tool execution whitelists, prompt injection defense, numerical grounding verification, and automated Permit-to-Work (PTW) safety compliance reviews against OEM manuals.
+                </p>
               </div>
             </div>
           </section>
@@ -302,35 +292,35 @@ export default function LandingPage() {
           {/* --- HOW IT WORKS SECTION --- */}
           <section id="how-it-works" className="how-it-works-section">
             <h2 className="section-title">How It Works</h2>
-            <p className="section-subtitle">From document upload to verified answers in four easy steps.</p>
+            <p className="section-subtitle">From plant systems to ground-truth intelligence in four steps.</p>
 
             <div className="steps-container">
               <div className="step-item">
                 <div className="step-number">01</div>
-                <h4 className="step-title">Upload Documents</h4>
-                <p className="step-description">Drop PDFs or technical manuals directly into the secure ingestion workspace.</p>
-                <div className="step-badge">PDF support</div>
+                <h4 className="step-title">Connect &amp; Ingest</h4>
+                <p className="step-description">Link OPC UA machine telemetry, SAP ERP endpoints, and upload OEM technical manuals and safety SOPs.</p>
+                <div className="step-badge">System Integration</div>
               </div>
 
               <div className="step-item">
                 <div className="step-number">02</div>
-                <h4 className="step-title">Asynchronous Parsing</h4>
-                <p className="step-description">Redis queue simple workers parse headers, sections, and complex metadata tables.</p>
-                <div className="step-badge">Redis simple queue</div>
+                <h4 className="step-title">Index &amp; Contextualize</h4>
+                <p className="step-description">Background workers parse document structures, extract tables, and index OPC UA tag address spaces into private vector stores.</p>
+                <div className="step-badge">Automated Pipeline</div>
               </div>
 
               <div className="step-item">
                 <div className="step-number">03</div>
-                <h4 className="step-title">Vector Indexing</h4>
-                <p className="step-description">Embeddings are indexed dynamically into Milvus Lite/Standalone vector storage.</p>
-                <div className="step-badge">Milvus Lite</div>
+                <h4 className="step-title">Agent Orchestration</h4>
+                <p className="step-description">AI agents query live machine sensors, inspect SAP stock inventory, and search technical manuals simultaneously.</p>
+                <div className="step-badge">Live Diagnostic Loop</div>
               </div>
 
               <div className="step-item">
                 <div className="step-number">04</div>
-                <h4 className="step-title">Ask &amp; Cite</h4>
-                <p className="step-description">Ask any question. The assistant retrieves, reranks, answers, and cites page locations.</p>
-                <div className="step-badge">Deep citation</div>
+                <h4 className="step-title">Grounded Answers &amp; Audits</h4>
+                <p className="step-description">Receive verified, page-cited answers and automated Permit-to-Work safety compliance reports.</p>
+                <div className="step-badge">PTW Compliance</div>
               </div>
             </div>
           </section>
@@ -338,10 +328,10 @@ export default function LandingPage() {
           {/* --- PRICING & CTA --- */}
           <section id="pricing" className="cta-section">
             <div className="cta-box">
-              <h2 className="cta-title">Ready to unlock document intelligence?</h2>
-              <p className="cta-subtitle">Start processing PDFs and querying your knowledge base instantly.</p>
+              <h2 className="cta-title">Ready to bring intelligence to your plant floor?</h2>
+              <p className="cta-subtitle">Connect SAP ERP, OPC UA telemetry, and OEM manuals to AI agents instantly.</p>
               <button onClick={() => setShowAuthModal('signup')} className="btn-cta">
-                Get Started Free
+                Launch Factory Agent
               </button>
             </div>
           </section>
@@ -356,14 +346,14 @@ export default function LandingPage() {
               <img src="/favicon.svg" alt="Logo" width="24" height="24" />
               <span className="navbar-title">{appName}</span>
             </div>
-            <p className="brand-text">Production-grade Retrieval-Augmented Generation for technical manuals and enterprise PDFs.</p>
+            <p className="brand-text">Enterprise Industrial AI Platform unifying SAP ERP, OPC UA machine telemetry, and technical SOPs into intelligent agents.</p>
           </div>
 
           <div className="footer-column">
             <h4>Product</h4>
             <ul>
               <li><button onClick={() => scrollToSection('features')} className="footer-link">Features</button></li>
-              <li><button onClick={() => scrollToSection('how-it-works')} className="footer-link">Retrieval Engine</button></li>
+              <li><button onClick={() => scrollToSection('how-it-works')} className="footer-link">Industrial Platform</button></li>
               <li><button onClick={() => scrollToSection('pricing')} className="footer-link">Pricing</button></li>
               <li><button onClick={() => scrollToSection('support')} className="footer-link">Changelog</button></li>
             </ul>
