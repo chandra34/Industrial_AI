@@ -27,7 +27,7 @@ export default function App() {
   const { user } = useAuth();
   
   /** @type {['chat'|'agent'|'review'|'tagCatalog'|'documents'|'settings', function(string): void]} */
-  const [activeView, setActiveView] = useState('chat');
+  const [activeView, setActiveView] = useState('agent');
   
   /** @type {[boolean, function(boolean): void]} */
   const [showUpload, setShowUpload] = useState(false);

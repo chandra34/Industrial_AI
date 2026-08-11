@@ -31,11 +31,41 @@ export default function ChatArea({ messages, isLoading, onSend, onUploadClick })
       <div className="chat-area-scroll" ref={scrollRef}>
         {/* Welcome Message */}
         <div className="chat-welcome">
-          <h1 className="chat-welcome-title">Hello! 👋</h1>
-          <h2 className="chat-welcome-subtitle">Ask anything about your documents</h2>
+          <div className="chat-system-badge">
+            <span className="chat-badge-icon">📖</span>
+            <span>Technical Knowledge Base RAG</span>
+          </div>
+
+          <h1 className="chat-welcome-title">Document &amp; SOP Intelligence</h1>
           <p className="chat-welcome-desc">
-            I'll search your knowledge base and provide accurate, cited answers.
+            Search indexed OEM manuals, SOPs, contracts, and engineering specs with page-precise citations.
           </p>
+
+          <div className="chat-cards-grid">
+            <div className="chat-capability-card">
+              <div className="chat-card-icon">📘</div>
+              <h3 className="chat-card-title">OEM Equipment Manuals</h3>
+              <p className="chat-card-desc">Search operating limits, maintenance schedules, and assembly diagrams.</p>
+            </div>
+
+            <div className="chat-capability-card">
+              <div className="chat-card-icon">📋</div>
+              <h3 className="chat-card-title">Standard Operating Procedures</h3>
+              <p className="chat-card-desc">Retrieve step-by-step safety steps, lockout/tagout rules, and checklists.</p>
+            </div>
+
+            <div className="chat-capability-card">
+              <div className="chat-card-icon">📐</div>
+              <h3 className="chat-card-title">Engineering Specifications</h3>
+              <p className="chat-card-desc">Look up torque limits, pressure thresholds, and electrical ratings.</p>
+            </div>
+
+            <div className="chat-capability-card">
+              <div className="chat-card-icon">📄</div>
+              <h3 className="chat-card-title">Contracts &amp; Safety Audits</h3>
+              <p className="chat-card-desc">Search vendor SLA terms, inspection reports, and Permit-to-Work records.</p>
+            </div>
+          </div>
         </div>
 
         {/* Messages */}

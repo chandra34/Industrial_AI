@@ -14,6 +14,39 @@
   color: var(--text-primary);
 }
 
+/* Sub-Tab Navigation Bar */
+.settingsTabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 12px;
+}
+
+.tabBtn {
+  background: var(--bot-bubble-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.tabActive {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.25);
+}
+
 .settingsCard {
   background: #ffffff;
   padding: 24px;
