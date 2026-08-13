@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from backend.utils.guardrails import validate_input, GuardrailViolationError
 from backend.schemas.query import QueryRequest, QueryResponse, SourceChunkResponse
 from backend.schemas.safety import PTWReviewRequest, SafetyReviewReport
 from backend.api.auth import get_current_user, FirebaseUser
@@ -27,7 +28,11 @@ async def query_documents(
     """Run RAG retrieval and generation for a user question."""
 
     try:
-        result = await pipeline.answer_question(payload.question, user_id=current_user.uid, top_k=payload.top_k)
+        clean_question = validate_input(payload.question)
+        result = await pipeline.answer_question(clean_question, user_id=current_user.uid, top_k=payload.top_k)
+    except GuardrailViolationError as gv:
+        logger.warning("Query guardrail violation for user %s: %s", current_user.uid, gv)
+        raise HTTPException(status_code=400, detail=str(gv)) from gv
     except Exception as exc:
         logger.exception("Query failed")
         raise HTTPException(status_code=500, detail="An internal server error occurred while processing your query.") from exc
@@ -63,7 +68,11 @@ async def review_permit(
     """Audit a Permit-to-Work request against retrieved safety standards."""
 
     try:
+        validate_input(payload.permit_text)
         return await pipeline.review_permit(payload, user_id=current_user.uid)
+    except GuardrailViolationError as gv:
+        logger.warning("Review guardrail violation for user %s: %s", current_user.uid, gv)
+        raise HTTPException(status_code=400, detail=str(gv)) from gv
     except Exception as exc:
         logger.exception("Permit review failed")
         raise HTTPException(status_code=500, detail="An internal server error occurred while reviewing the permit.") from exc
