@@ -7,6 +7,7 @@ from backend.rag.llm import LLMProvider
 from backend.rag.prompts import build_messages
 from backend.rag.retrieval import RetrievedChunk, RetrievalService
 from backend.vectordb import build_scalar_filter
+from backend.utils.guardrails import verify_grounding
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,12 @@ class RAGPipeline:
         duration_llm = time.perf_counter() - start_llm
         logger.info("Query flow: answer generated | duration: %.3fs", duration_llm)
         
+        # Layer 3: Output grounding verification
+        source_texts = [chunk.chunk_text for chunk in sources]
+        is_grounded, grounding_warning = verify_grounding(answer, source_texts)
+        if not is_grounded:
+            logger.warning("Query flow: grounding check flagged | %s", grounding_warning)
+
         # Log correlation complete
         logger.info("Query flow: request completed successfully")
         return QAResult(answer=answer, sources=sources)
