@@ -139,6 +139,85 @@ async def test_gemini_multi_tool_response_merging():
         assert parts[1]["functionResponse"]["name"] == "read_opcua_node_value"
 
 
+@pytest.mark.asyncio
+async def test_anthropic_multi_tool_response_merging():
+    """Verify LLMProvider correctly formats tools, extracts system prompt, and merges tool results for Anthropic."""
+    from backend.agents.llm_provider import LLMProvider
+
+    provider = LLMProvider(provider="anthropic", model="claude-3-5-sonnet-20241022")
+
+    messages = [
+        {"role": "system", "content": "You are a helpful industrial assistant."},
+        {"role": "user", "content": "Check stock and live temperature."},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {"name": "check_material_stock", "arguments": {"material_id": "SKF-6214"}},
+                {"name": "read_opcua_node_value", "arguments": {"node_id": "ns=2;i=1001"}},
+            ],
+        },
+        {"role": "tool", "tool_call_id": "toolu_01", "name": "check_material_stock", "content": '{"stock": 15}'},
+        {"role": "tool", "tool_call_id": "toolu_02", "name": "read_opcua_node_value", "content": '{"value": 87.5}'},
+    ]
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "check_material_stock",
+                "description": "Check stock level.",
+                "parameters": {"type": "object", "properties": {"material_id": {"type": "string"}}},
+            },
+        }
+    ]
+
+    mock_text_block = MagicMock()
+    mock_text_block.type = "text"
+    mock_text_block.text = "Stock is 15 and temperature is 87.5."
+
+    mock_response = MagicMock()
+    mock_response.content = [mock_text_block]
+
+    mock_client = MagicMock()
+    mock_messages_api = AsyncMock()
+    mock_messages_api.create.return_value = mock_response
+    mock_client.messages = mock_messages_api
+
+    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}), patch("anthropic.AsyncAnthropic", return_value=mock_client):
+        unified_msg, raw_resp = await provider.generate_step(messages, tools=tools)
+
+        assert mock_messages_api.create.called
+        call_kwargs = mock_messages_api.create.call_args[1]
+
+        # Verify system prompt extraction
+        assert call_kwargs["system"] == "You are a helpful industrial assistant."
+
+        # Verify tool schema conversion (parameters -> input_schema)
+        assert len(call_kwargs["tools"]) == 1
+        assert call_kwargs["tools"][0]["name"] == "check_material_stock"
+        assert "input_schema" in call_kwargs["tools"][0]
+
+        # Verify message format and tool_result merging
+        sent_messages = call_kwargs["messages"]
+        assert len(sent_messages) == 3
+        assert sent_messages[0]["role"] == "user"
+        assert sent_messages[1]["role"] == "assistant"
+        assert sent_messages[2]["role"] == "user"
+
+        # Verify merged tool_result blocks in the user turn
+        tool_results = sent_messages[2]["content"]
+        assert len(tool_results) == 2
+        assert tool_results[0]["type"] == "tool_result"
+        assert tool_results[0]["tool_use_id"] == "toolu_01"
+        assert tool_results[1]["type"] == "tool_result"
+        assert tool_results[1]["tool_use_id"] == "toolu_02"
+
+        # Verify unified message response
+        assert unified_msg.content == "Stock is 15 and temperature is 87.5."
+        assert unified_msg.tool_calls is None
+
+
 def test_tool_schema_signature_alignment():
     """Verify tool definitions contain all required filter parameters."""
     from backend.agents.tools_registry import get_openai_tool_definitions
@@ -250,6 +329,57 @@ async def test_parallel_tool_concurrent_execution():
             assert len(res.tool_calls) == 2
             # If run concurrently, total time should be ~0.2s, not 0.4s
             assert t_total < 0.35
+
+
+@pytest.mark.asyncio
+async def test_anthropic_agent_orchestrator_execution():
+    """Verify orchestrator runs multi-step reasoning with Anthropic provider."""
+    config = SAPConfig(_env_file=None)
+    sap_client = SAPClient(config)
+    orchestrator = IndustrialOrchestrator(
+        sap_client=sap_client,
+        provider="anthropic",
+        model="claude-3-5-sonnet-20241022",
+    )
+
+    assert orchestrator.llm_provider.provider == "anthropic"
+    assert orchestrator.llm_provider.model == "claude-3-5-sonnet-20241022"
+
+    # Step 1: Claude returns tool call request
+    mock_tc = MagicMock()
+    mock_tc.name = "check_material_stock"
+    mock_tc.arguments = {"material_id": "SKF-6214", "plant_id": "1010"}
+    mock_tc.id = "toolu_01"
+
+    mock_step1_msg = MagicMock()
+    mock_step1_msg.content = None
+    mock_step1_msg.tool_calls = [mock_tc]
+
+    mock_raw_step1 = MagicMock()
+    mock_raw_step1.content = [MagicMock(type="tool_use", id="toolu_01", name="check_material_stock", input={"material_id": "SKF-6214", "plant_id": "1010"})]
+
+    # Step 2: Claude returns final text answer after tool execution
+    mock_step2_msg = MagicMock()
+    mock_step2_msg.content = "Plant 1010 has 15 SKF-6214 bearings available in stock."
+    mock_step2_msg.tool_calls = None
+
+    mock_raw_step2 = MagicMock()
+    mock_raw_step2.content = [MagicMock(type="text", text="Plant 1010 has 15 SKF-6214 bearings available in stock.")]
+
+    mock_tool_func = AsyncMock(return_value=[{"Material": "SKF-6214", "Stock": 15}])
+
+    with patch.object(orchestrator.llm_provider, "generate_step", side_effect=[(mock_step1_msg, mock_raw_step1), (mock_step2_msg, mock_raw_step2)]):
+        with patch.dict("backend.agents.orchestrator.ALL_EXECUTABLE_TOOLS", {"check_material_stock": mock_tool_func}):
+            req = AgentQueryRequest(query="Do we have SKF-6214 bearings in stock?")
+            res = await orchestrator.run(req)
+
+            assert res.steps_taken == 2
+            assert "15 SKF-6214 bearings" in res.answer
+            assert len(res.tool_calls) == 1
+            assert res.tool_calls[0].tool_name == "check_material_stock"
+            assert res.llm_provider_used == "anthropic"
+            assert res.llm_model_used == "claude-3-5-sonnet-20241022"
+
 
 
 
