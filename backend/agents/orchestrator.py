@@ -161,6 +161,13 @@ class IndustrialOrchestrator:
             # Append assistant message with tool call
             if self.llm_provider.provider == "openai":
                 messages.append(raw_msg)
+            elif self.llm_provider.provider == "anthropic":
+                # Preserve Anthropic's native content block list (TextBlock + ToolUseBlock)
+                # so Claude can see its own tool_use blocks in subsequent turns
+                messages.append({
+                    "role": "assistant",
+                    "content": raw_msg.content,
+                })
             else:
                 # Preserve the raw content dictionary from the Gemini REST response
                 # This retains the thoughtSignature required for multi-turn tool calling

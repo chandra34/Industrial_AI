@@ -265,6 +265,8 @@ async def on_startup() -> None:
         sap_client=sap_client,
         opcua_client=opcua_client,
         retrieval_service=retrieval_service,
+        provider=settings.llm_provider,
+        model=settings.llm_model,
     )
 
     # Check database for active connection profile and restore if exists
