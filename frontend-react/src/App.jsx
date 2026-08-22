@@ -14,10 +14,11 @@ const LandingPage = lazy(() => import('./components/LandingPage'));
 const SafetyReviewDashboard = lazy(() => import('./components/SafetyReviewDashboard'));
 const AgentChatArea = lazy(() => import('./components/AgentChatArea'));
 const TagCatalogPanel = lazy(() => import('./components/TagCatalogPanel'));
+const PlantHealthDashboard = lazy(() => import('./components/PlantHealthDashboard'));
 
 /**
  * The main App layout component managing the RAG application lifecycle.
- * Orchestrates views (chat, agent, review, tagCatalog, documents, settings) and coordinates
+ * Orchestrates views (chat, agent, dashboard, review, tagCatalog, documents, settings) and coordinates
  * state slices fetched via decoupled custom hooks.
  *
  * @component
@@ -26,7 +27,7 @@ const TagCatalogPanel = lazy(() => import('./components/TagCatalogPanel'));
 export default function App() {
   const { user } = useAuth();
   
-  /** @type {['chat'|'agent'|'review'|'tagCatalog'|'documents'|'settings', function(string): void]} */
+  /** @type {['chat'|'agent'|'dashboard'|'review'|'tagCatalog'|'documents'|'settings', function(string): void]} */
   const [activeView, setActiveView] = useState('agent');
   
   /** @type {[boolean, function(boolean): void]} */
@@ -67,6 +68,14 @@ export default function App() {
     handleUploaded, 
     clearDocuments 
   } = useDocuments(user);
+
+  // Function to switch to Agent view and send an initial diagnostic prompt
+  const handleOpenCopilotWithPrompt = (prompt) => {
+    setActiveView('agent');
+    if (prompt) {
+      handleAgentSend(prompt);
+    }
+  };
 
   // Synchronize component states on user session swaps
   useEffect(() => {
@@ -113,6 +122,12 @@ export default function App() {
                 messages={agentMessages}
                 isLoading={agentIsLoading}
                 onSend={handleAgentSend}
+              />
+            )}
+
+            {activeView === 'dashboard' && (
+              <PlantHealthDashboard
+                onOpenCopilot={handleOpenCopilotWithPrompt}
               />
             )}
 

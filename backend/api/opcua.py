@@ -465,3 +465,58 @@ async def connect_to_server(
         tags_syncing=True,
         message=f"Connected successfully to {target_profile_name}. Tag re-indexing started in the background."
     )
+
+
+@router.get("/telemetry/anomalies/{node_id:path}")
+async def get_telemetry_anomalies(
+    node_id: str,
+    lookback_hours: int = 24,
+    sensor_type: str = "general",
+    request: Request = None,
+    current_user: FirebaseUser = Depends(get_current_user),
+):
+    """Run statistical anomaly detection on a sensor's recent history.
+
+    Returns per-method anomaly scores (Z-Score, MAD, EWMA drift, ISO vibration)
+    and an overall severity rating (NORMAL / WARNING / CRITICAL / DRIFTING).
+
+    Path params:
+        node_id: OPC UA Node ID (e.g. 'ns=2;i=10842').
+    Query params:
+        lookback_hours: Hours of history to analyze (default 24, max 168).
+        sensor_type: Sensor type hint ('temperature', 'pressure', 'vibration',
+                     'speed', 'current', 'flow', 'general').
+    """
+    from backend.connectors.opcua.reader import OPCUAReader
+
+    lookback_hours = max(1, min(lookback_hours, 168))
+
+    valid_sensor_types = {"temperature", "pressure", "vibration", "speed", "current", "flow", "general"}
+    if sensor_type not in valid_sensor_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid sensor_type '{sensor_type}'. Must be one of: {', '.join(sorted(valid_sensor_types))}",
+        )
+
+    orchestrator = request.app.state.industrial_orchestrator
+    if not orchestrator.opcua_client:
+        raise HTTPException(
+            status_code=503,
+            detail="No active OPC UA connection. Connect to a server first.",
+        )
+
+    try:
+        reader = OPCUAReader(orchestrator.opcua_client)
+        result = await reader.detect_anomalies(
+            node_id=node_id,
+            lookback_hours=lookback_hours,
+            sensor_type=sensor_type,
+        )
+        return result
+    except Exception as e:
+        logger.error("Anomaly detection API error for node %s: %s", node_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Anomaly detection failed: {str(e)}",
+        )
+

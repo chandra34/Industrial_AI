@@ -119,6 +119,7 @@ ALLOWED_TOOLS: frozenset[str] = frozenset({
     "read_opcua_node_history",
     "read_opcua_history_at_time",
     "get_opcua_alarm_events",
+    "detect_telemetry_anomalies",
 
 
     # RAG Vector DB (read-only search)
