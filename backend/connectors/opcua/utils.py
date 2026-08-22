@@ -6,15 +6,23 @@ import re
 from typing import Any
 
 
-def clean_node_id(node_id: str) -> str:
-    """Clean ExpandedNodeId representation to a parseable string format.
+def clean_node_id(node_id: Any) -> str:
+    """Clean ExpandedNodeId or NodeId representation to a parseable string format.
 
-    :param node_id: Raw node ID string (may contain ExpandedNodeId format).
-    :return: Cleaned node ID string (e.g. 'ns=2;s=Pump01' or 'ns=0;i=85').
+    :param node_id: Raw node ID (string, NodeId, or ExpandedNodeId).
+    :return: Cleaned standard node ID string (e.g. 'ns=2;s=Pump01' or 'ns=3;i=1001').
     """
-    if "ExpandedNodeId" in node_id:
-        ns_match = re.search(r"NamespaceIndex=(\d+)", node_id)
-        id_match = re.search(r"Identifier=([^,\)]+)", node_id)
+    if node_id is None:
+        return ""
+    if hasattr(node_id, "to_string"):
+        try:
+            return node_id.to_string()
+        except Exception:
+            pass
+    node_str = str(node_id)
+    if "ExpandedNodeId" in node_str or "NodeId(" in node_str:
+        ns_match = re.search(r"NamespaceIndex=(\d+)", node_str)
+        id_match = re.search(r"Identifier=([^,\)]+)", node_str)
         if ns_match and id_match:
             ns = ns_match.group(1)
             ident = id_match.group(1).strip("'\"")
@@ -22,7 +30,7 @@ def clean_node_id(node_id: str) -> str:
                 return f"ns={ns};i={ident}"
             else:
                 return f"ns={ns};s={ident}"
-    return node_id
+    return node_str
 
 
 def to_json_safe(val: Any) -> Any:
