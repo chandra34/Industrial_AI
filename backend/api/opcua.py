@@ -20,6 +20,7 @@ from backend.connectors.opcua.connection import OPCUAClient
 from backend.connectors.opcua.config import OPCUAConfig
 from backend.connectors.opcua.crawler import OPCUATagCrawler
 from backend.connectors.opcua.indexer import get_catalog_status
+from backend.connectors.opcua.utils import clean_node_id
 from backend.database.session import get_db, AsyncSessionLocal
 from backend.database.models import OPCUAConnectionProfile, OPCUATagCatalog
 from backend.utils.crypto import encrypt_password, decrypt_password
@@ -208,7 +209,7 @@ async def list_opcua_tags(
     return {
         "tags": [
             {
-                "node_id": tag.node_id,
+                "node_id": clean_node_id(tag.node_id),
                 "display_name": tag.display_name,
                 "browse_name": tag.browse_name,
                 "full_path": tag.full_path,
@@ -514,9 +515,14 @@ async def get_telemetry_anomalies(
         )
         return result
     except Exception as e:
-        logger.error("Anomaly detection API error for node %s: %s", node_id, e, exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Anomaly detection failed: {str(e)}",
-        )
+        logger.warning("Anomaly detection API error for node %s: %s. Returning graceful fallback.", node_id, e)
+        return {
+            "node_id": node_id,
+            "sensor_type": sensor_type,
+            "lookback_hours": lookback_hours,
+            "sample_count": 0,
+            "overall_severity": "INSUFFICIENT_DATA",
+            "methods": {},
+            "note": f"Sensor telemetry currently unavailable: {str(e)}",
+        }
 

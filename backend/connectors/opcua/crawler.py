@@ -14,9 +14,20 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.connectors.opcua.connection import OPCUAClient
+from backend.connectors.opcua.utils import clean_node_id
 from backend.database.models import OPCUATagCatalog
 
 logger = logging.getLogger(__name__)
+
+# Standard OPC UA Alarm Condition metadata sub-properties (IEC 62541-9)
+ALARM_METADATA_FIELDS = {
+    "AckedState", "ActiveState", "BranchId", "Comment", "ConditionClassId",
+    "ConditionClassName", "ConfirmedState", "DialogState", "EnabledState",
+    "EventId", "EventType", "HighHighLimit", "HighLimit", "InputNode",
+    "LastSeverity", "LimitState", "LowLowLimit", "LowLimit", "Message",
+    "Quality", "ReceiveTime", "Retain", "Severity", "SourceNode",
+    "SourceName", "SuppressedOrShelved", "Time", "ClientUserId", "CurrentState",
+}
 
 
 class OPCUATagCrawler:
@@ -80,43 +91,46 @@ class OPCUATagCrawler:
     ) -> None:
         """Recursively crawl a single node and its children.
 
+        Uses get_children_descriptions for single-roundtrip batch extraction of
+        BrowseName, NodeClass, and NodeId.
+
         :param node: asyncua Node object.
         :param path: Human-readable path built so far.
         :param parent_node_id: Node ID string of the parent.
         :param depth: Current recursion depth.
         :param accumulator: List to append discovered tag dictionaries.
         """
-        node_id_str = str(node.nodeid)
+        node_id_str = clean_node_id(node.nodeid)
 
         if node_id_str in self._visited or depth > self.max_depth:
             return
         self._visited.add(node_id_str)
 
         try:
-            children = await node.get_children()
+            # Batch extraction: get_children_descriptions returns BrowseName, NodeClass, and NodeId in 1 call
+            descriptions = await node.get_children_descriptions()
         except Exception as e:
-            logger.warning("Failed to get children for node %s: %s", node_id_str, e)
+            logger.warning("Failed to get children descriptions for node %s: %s", node_id_str, e)
             return
 
-        for child in children:
+        for desc in descriptions:
             try:
-                child_node_id = str(child.nodeid)
-                browse_name_obj = await child.read_browse_name()
-                browse_name = browse_name_obj.Name
+                child_node_id = clean_node_id(desc.NodeId)
+                browse_name = getattr(desc.BrowseName, "Name", str(desc.BrowseName))
 
-                # Crawl internal OPC UA system folder (Objects > Server) to reach custom folders like Server > Boilers
-                if depth == 1 and browse_name == "Server":
-                    pass
-
-                # Skip dummy OPC UA memory buffer test folder
-                if browse_name == "MemoryBuffers":
+                # Skip internal OPC UA protocol diagnostic / system folders
+                if depth == 1 and browse_name in ["Server", "Aliases", "Locations", "MemoryBuffers"]:
+                    logger.debug("Skipping standard OPC UA system folder: %s", browse_name)
                     continue
 
-                node_class_obj = await child.read_node_class()
-                node_class = getattr(node_class_obj, "name", str(node_class_obj))
+                # Skip internal Alarm Condition metadata sub-variables (e.g. MyLevel.Alarm/0:Comment)
+                if "/0:" in child_node_id or browse_name in ALARM_METADATA_FIELDS:
+                    continue
+
+                node_class_val = getattr(desc.NodeClass, "name", str(desc.NodeClass))
                 child_path = f"{path} > {browse_name}"
 
-                # Build human-readable display name from path segments (normalize # -> space)
+                # Build human-readable display name from path segments (normalize # and _ -> space)
                 display_name = " ".join(
                     seg.replace("_", " ").replace("#", " ")
                     for seg in child_path.split(" > ")
@@ -128,17 +142,17 @@ class OPCUATagCrawler:
                     "browse_name": browse_name,
                     "display_name": display_name.strip(),
                     "full_path": child_path,
-                    "node_class": "Variable" if "Variable" in node_class else "Object",
+                    "node_class": "Variable" if "Variable" in node_class_val else "Object",
                     "parent_node_id": node_id_str,
                 }
 
-
-                if "Variable" in node_class:
+                if "Variable" in node_class_val:
                     accumulator.append(tag_record)
-                elif "Object" in node_class or "Folder" in node_class:
+                elif "Object" in node_class_val or "Folder" in node_class_val:
                     accumulator.append(tag_record)
+                    child_node = self.client.raw_client.get_node(desc.NodeId)
                     await self._crawl_node(
-                        node=child,
+                        node=child_node,
                         path=child_path,
                         parent_node_id=child_node_id,
                         depth=depth + 1,
