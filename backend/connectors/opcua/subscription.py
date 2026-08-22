@@ -53,8 +53,13 @@ class _DataChangeHandler:
 class _EventHandler:
     """Internal handler for OPC UA event notifications."""
 
-    def __init__(self, callback: Callable[[Dict[str, Any]], None]) -> None:
+    def __init__(
+        self,
+        callback: Callable[[Dict[str, Any]], None],
+        async_handler: Optional[Callable[[Dict[str, Any]], Any]] = None,
+    ) -> None:
         self._callback = callback
+        self._async_handler = async_handler
 
     def event_notification(self, event: Any) -> None:
         """Called by asyncua when an event fires.
@@ -70,8 +75,17 @@ class _EventHandler:
                 "message": str(getattr(event, "Message", "Event Triggered")),
                 "source_name": str(getattr(event, "SourceName", "OPCUA Server")),
             }
-            # Execute callback
+            # Execute synchronous callback
             self._callback(event_dict)
+
+            # If async handler provided and event is high severity (Trip / Alarm), schedule in event loop
+            if self._async_handler and event_dict["severity"] >= 500:
+                import asyncio
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(self._async_handler(event_dict))
+                except RuntimeError:
+                    pass
         except Exception as e:
             logger.error("Error executing event subscription callback: %s", e, exc_info=True)
 
@@ -134,6 +148,7 @@ class OPCUASubscriptionManager:
         publish_interval_ms: int = 500,
         callback: Callable[[Dict[str, Any]], None] = lambda *_: None,
         event_type_node_id: Optional[str] = None,
+        async_handler: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> str:
         """Subscribe to live trip alarms and safety events under a machine node.
 
@@ -141,6 +156,7 @@ class OPCUASubscriptionManager:
         :param publish_interval_ms: Notification check interval in milliseconds.
         :param callback: Callback function: callback(event_dict).
         :param event_type_node_id: Specific event type Node ID (default BaseEventType).
+        :param async_handler: Optional async callback for high-severity alarm event handling.
         :return: A unique subscription ID string.
         """
         await self._ensure_connected()
@@ -149,7 +165,7 @@ class OPCUASubscriptionManager:
         clean_machine_id = clean_node_id(machine_node_id)
         logger.info("Subscribing to alarm events under node: %s", clean_machine_id)
 
-        handler = _EventHandler(callback)
+        handler = _EventHandler(callback, async_handler=async_handler)
         sub = await self.client.raw_client.create_subscription(publish_interval_ms, handler)
 
         machine_node = self.client.raw_client.get_node(clean_machine_id)

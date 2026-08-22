@@ -22,7 +22,7 @@ class OPCUAConfig(BaseSettings):
         description="OPC UA Server Endpoint URL",
     )
     timeout_seconds: float = Field(
-        default=4.0,
+        default=20.0,
         gt=0.0,
         description="Request and connection timeout in seconds",
     )
@@ -56,9 +56,14 @@ class OPCUAConfig(BaseSettings):
         description="How long requests block waiting for connection to become ready while reconnecting",
     )
     watchdog_interval: float = Field(
-        default=1.0,
+        default=20.0,
         gt=0.0,
         description="Server alive watchdog check interval in seconds",
+    )
+    session_timeout_ms: int = Field(
+        default=60000,
+        gt=0,
+        description="OPC UA session timeout requested from the server in milliseconds",
     )
     session_name: str = Field(
         default="IndustrialAI_OPCUA_Client",

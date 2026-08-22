@@ -7,6 +7,7 @@ from backend.api.documents import router as documents_router
 from backend.api.agent import router as agent_router
 from backend.api.opcua import router as opcua_router
 from backend.api.sap import router as sap_router
+from backend.api.rca import router as rca_router
 
 router = APIRouter()
 
@@ -18,6 +19,8 @@ router.include_router(documents_router)
 router.include_router(agent_router, prefix="/agent", tags=["Agent Orchestrator"])
 router.include_router(opcua_router)
 router.include_router(sap_router)
+router.include_router(rca_router)
+
 
 
 

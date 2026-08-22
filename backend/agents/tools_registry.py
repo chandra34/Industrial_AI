@@ -309,7 +309,38 @@ async def get_opcua_node_attributes(
     }
 
 
-
+async def detect_telemetry_anomalies(
+    node_id: str,
+    lookback_hours: int = 24,
+    sensor_type: str = "general",
+    opcua_client: Optional[OPCUAClient] = None,
+) -> Dict[str, Any]:
+    """Run statistical anomaly detection (Z-Score, MAD, EWMA drift, ISO vibration) on a sensor's recent history."""
+    logger.info("OPC UA Tool: detect_telemetry_anomalies(node_id='%s', lookback_hours=%d, sensor_type='%s')", node_id, lookback_hours, sensor_type)
+    if opcua_client:
+        try:
+            reader = OPCUAReader(opcua_client)
+            res = await reader.detect_anomalies(
+                node_id=node_id,
+                lookback_hours=lookback_hours,
+                sensor_type=sensor_type,
+            )
+            return _to_json_safe(res)
+        except Exception as e:
+            logger.error("OPC UA detect_telemetry_anomalies error: %s", e)
+            return {"node_id": node_id, "error": f"Failed to run anomaly detection: {e}"}
+    return {
+        "node_id": node_id,
+        "sensor_type": sensor_type,
+        "sample_count": 48,
+        "current_value": 87.5,
+        "overall_severity": "NORMAL",
+        "methods": {
+            "rolling_zscore": {"z_score": 0.45, "severity": "NORMAL"},
+            "modified_zscore_mad": {"modified_z_score": 0.32, "severity": "NORMAL"},
+            "ewma_drift": {"drift_rate_per_hour": 0.12, "severity": "STABLE"},
+        },
+    }
 
 
 # Combined dictionary of all executable tool functions across SAP, OPC UA, and Vector RAG
@@ -326,6 +357,7 @@ ALL_EXECUTABLE_TOOLS: Dict[str, Callable] = {
     "read_opcua_node_history": read_opcua_node_history,
     "read_opcua_history_at_time": read_opcua_history_at_time,
     "get_opcua_alarm_events": get_opcua_alarm_events,
+    "detect_telemetry_anomalies": detect_telemetry_anomalies,
 }
 
 
@@ -685,6 +717,26 @@ def get_openai_tool_definitions() -> List[Dict[str, Any]]:
                     "type": "object",
                     "properties": {
                         "node_id": {"type": "string", "description": "OPC UA Node ID (e.g. 'ns=2;i=10842')"},
+                    },
+                    "required": ["node_id"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "detect_telemetry_anomalies",
+                "description": "Run statistical anomaly detection on a sensor's recent historical data. Applies 4 industry-standard methods (Rolling Z-Score, Modified Z-Score/MAD, EWMA drift rate, and ISO 10816 vibration analysis). Returns severity levels (NORMAL/WARNING/CRITICAL/DRIFTING) for each method. Use when the user asks about anomalies, health status, or abnormal readings on a specific sensor or machine tag.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string", "description": "OPC UA Node ID of the sensor (e.g. 'ns=2;i=10842')"},
+                        "lookback_hours": {"type": "integer", "description": "Hours of history to analyze (default 24, max 168)"},
+                        "sensor_type": {
+                            "type": "string",
+                            "description": "Type of sensor for method selection",
+                            "enum": ["temperature", "pressure", "vibration", "speed", "current", "flow", "general"],
+                        },
                     },
                     "required": ["node_id"],
                 },

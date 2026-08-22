@@ -1,0 +1,877 @@
+/* ==========================================================================
+   PLANT HEALTH DASHBOARD STYLES (Light Mode base tokens + Enterprise Layout)
+   ========================================================================== */
+
+.phd-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 20px 24px;
+  overflow-y: auto;
+  gap: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   Loader & Error States
+   -------------------------------------------------------------------------- */
+.phd-state-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 32px;
+}
+
+.phd-state-card {
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  padding: 40px 32px;
+  max-width: 480px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.phd-loader-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3.5px solid rgba(99, 102, 241, 0.15);
+  border-top-color: var(--accent, #6366f1);
+  border-radius: 50%;
+  animation: phdSpin 0.8s linear infinite;
+  margin-bottom: 8px;
+}
+
+.phd-state-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  margin: 0;
+}
+
+.phd-state-card p {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.phd-state-card--error .phd-state-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+.phd-retry-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: var(--accent, #6366f1);
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.phd-retry-btn:hover {
+  background: var(--accent-hover, #4f46e5);
+}
+
+/* --------------------------------------------------------------------------
+   ZONE 1: Summary Bar
+   -------------------------------------------------------------------------- */
+.phd-zone1-bar {
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.phd-health-score-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.phd-score-ring {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border: 3.5px solid;
+  transition: all 0.3s ease;
+}
+
+.phd-score--good {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #059669;
+}
+
+.phd-score--warn {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #f59e0b;
+  color: #d97706;
+}
+
+.phd-score--crit {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #dc2626;
+  animation: phdPulseCrit 2s infinite ease-in-out;
+}
+
+.phd-score-num {
+  font-size: 15px;
+}
+
+.phd-score-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.phd-score-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  margin: 0;
+}
+
+.phd-score-sub {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+/* KPI Group */
+.phd-kpi-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.phd-kpi-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.phd-kpi-pill--healthy {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #047857;
+}
+
+.phd-kpi-pill--healthy .phd-kpi-dot {
+  background: #10b981;
+}
+
+.phd-kpi-pill--warning {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #b45309;
+}
+
+.phd-kpi-pill--warning .phd-kpi-dot {
+  background: #f59e0b;
+}
+
+.phd-kpi-pill--critical {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #b91c1c;
+}
+
+.phd-kpi-pill--critical .phd-kpi-dot {
+  background: #ef4444;
+}
+
+.phd-kpi-pill--rca {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #4338ca;
+}
+
+.phd-kpi-pill--rca .phd-kpi-dot {
+  background: #6366f1;
+}
+
+.phd-kpi-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.phd-kpi-count {
+  font-weight: 800;
+}
+
+/* Live Controls */
+.phd-live-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.phd-toggle-live {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.phd-toggle-live input {
+  display: none;
+}
+
+.phd-live-text {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  padding: 6px 10px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  border: 1px solid var(--border-light, #e2e8f0);
+}
+
+.phd-live-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.phd-live-indicator.active {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  animation: phdPulseLive 1.5s infinite;
+}
+
+.phd-btn-refresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #f8fafc;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #334155);
+  transition: all 0.15s ease;
+}
+
+.phd-btn-refresh:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: var(--text-muted, #94a3b8);
+}
+
+.phd-spin {
+  animation: phdSpin 0.7s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   ZONE 2: Asset Health Cards Grid
+   -------------------------------------------------------------------------- */
+.phd-zone2-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Toolbar */
+.phd-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.phd-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.phd-filter-chip {
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  transition: all 0.15s ease;
+}
+
+.phd-filter-chip:hover {
+  background: #f8fafc;
+  color: var(--text-primary, #1e293b);
+}
+
+.phd-filter-chip.active {
+  background: var(--accent, #6366f1);
+  color: #ffffff;
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+}
+
+.phd-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.phd-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phd-select-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+
+.phd-area-select {
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+  outline: none;
+}
+
+.phd-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 240px;
+}
+
+.phd-search-box svg {
+  position: absolute;
+  left: 10px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.phd-search-box input {
+  width: 100%;
+  padding: 6px 28px 6px 30px;
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-primary, #1e293b);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.phd-search-box input:focus {
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 0 0 2.5px rgba(99, 102, 241, 0.12);
+}
+
+.phd-search-clear {
+  position: absolute;
+  right: 8px;
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+  padding: 2px 4px;
+}
+
+/* Grid */
+.phd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.phd-no-assets {
+  grid-column: 1 / -1;
+  padding: 40px;
+  text-align: center;
+  background: #ffffff;
+  border: 1px dashed var(--border-light, #cbd5e1);
+  border-radius: 12px;
+  color: var(--text-secondary, #64748b);
+  font-size: 13px;
+}
+
+/* Machine Health Card */
+.phd-asset-card {
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.025);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.phd-asset-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.phd-asset-card--critical {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.4) 0%, #ffffff 100%);
+}
+
+.phd-asset-card--warning {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(180deg, rgba(254, 252, 232, 0.4) 0%, #ffffff 100%);
+}
+
+/* Card Header */
+.phd-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.phd-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.phd-status-indicator {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.phd-status-indicator--healthy {
+  background: #10b981;
+}
+
+.phd-status-indicator--drifting,
+.phd-status-indicator--warning {
+  background: #f59e0b;
+}
+
+.phd-status-indicator--critical {
+  background: #ef4444;
+  animation: phdPulseDot 1.2s infinite;
+}
+
+.phd-asset-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phd-area-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  background: #f1f5f9;
+  color: var(--text-secondary, #64748b);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* Metric Row */
+.phd-card-metric-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.phd-metric-block {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.phd-metric-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+
+.phd-metric-unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+
+.phd-card-score-block {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phd-card-score-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary, #475569);
+}
+
+.phd-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.phd-pill--healthy {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.phd-pill--warning,
+.phd-pill--drifting {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.phd-pill--critical {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Statistical Badges */
+.phd-stats-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.phd-stat-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  color: var(--text-secondary, #475569);
+}
+
+.phd-stat-badge--alert {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* Sparkline */
+.phd-card-sparkline {
+  width: 100%;
+  height: 20px;
+}
+
+.phd-card-sparkline svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Card Action Footer */
+.phd-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.phd-btn-rca {
+  flex: 1;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border-light, #cbd5e1);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.phd-btn-rca:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--accent, #6366f1);
+}
+
+.phd-btn-rca--urgent {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.phd-btn-rca--urgent:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.phd-btn-rca:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.phd-btn-copilot {
+  width: 34px;
+  height: 34px;
+  background: #f1f5f9;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  transition: all 0.15s ease;
+}
+
+.phd-btn-copilot:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--accent, #6366f1);
+}
+
+.phd-btn-spin {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: phdSpin 0.7s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   ZONE 3: Live Alarms & RCA Feed
+   -------------------------------------------------------------------------- */
+.phd-zone3-section {
+  background: #ffffff;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.phd-zone3-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.phd-zone3-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.phd-zone3-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  margin: 0;
+}
+
+.phd-feed-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  color: var(--text-secondary, #64748b);
+  border-radius: 6px;
+}
+
+.phd-feed-empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+  font-size: 13px;
+}
+
+.phd-table-container {
+  overflow-x: auto;
+}
+
+.phd-feed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.phd-feed-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--text-secondary, #64748b);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+}
+
+.phd-feed-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+  color: var(--text-primary, #1e293b);
+}
+
+.phd-row:hover td {
+  background: #f8fafc;
+}
+
+.phd-cell-time {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  white-space: nowrap;
+}
+
+.phd-cell-asset {
+  font-weight: 600;
+}
+
+.phd-alarm-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.phd-alarm-tag--critical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.phd-alarm-tag--warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.phd-cell-cause {
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary, #475569);
+}
+
+.phd-conf-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.phd-conf-pill.high {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.phd-conf-pill.medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.phd-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.phd-status-badge--open {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.phd-status-badge--acknowledged {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.phd-status-badge--resolved {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.phd-view-report-btn {
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent, #6366f1);
+  transition: all 0.15s ease;
+}
+
+.phd-view-report-btn:hover {
+  background: var(--accent, #6366f1);
+  color: #ffffff;
+  border-color: var(--accent, #6366f1);
+}
+
+/* Animations */
+@keyframes phdSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes phdPulseLive {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes phdPulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes phdPulseCrit {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}

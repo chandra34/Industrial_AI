@@ -419,10 +419,188 @@ body.dark-theme [class*="loginError"] {
   color: #f87171;
 }
 
+/* --- Plant Health Dashboard Dark Mode --- */
+body.dark-theme .phd-zone1-bar {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+
+body.dark-theme .phd-live-text {
+  background: #14162a;
+  border-color: var(--border-light);
+}
+
+body.dark-theme .phd-btn-refresh {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+body.dark-theme .phd-btn-refresh:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-theme .phd-filter-chip {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+body.dark-theme .phd-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+body.dark-theme .phd-filter-chip.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+body.dark-theme .phd-area-select {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+body.dark-theme .phd-search-box input {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+body.dark-theme .phd-asset-card {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+
+body.dark-theme .phd-asset-card--critical {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, #181a2e 100%);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+body.dark-theme .phd-asset-card--warning {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, #181a2e 100%);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+body.dark-theme .phd-area-tag {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+
+body.dark-theme .phd-metric-val {
+  color: var(--text-primary);
+}
+
+body.dark-theme .phd-stat-badge {
+  background: #12132a;
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+body.dark-theme .phd-btn-rca {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--accent);
+}
+
+body.dark-theme .phd-btn-rca:hover:not(:disabled) {
+  background: rgba(108, 99, 255, 0.15);
+}
+
+body.dark-theme .phd-btn-copilot {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+body.dark-theme .phd-zone3-section {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+
+body.dark-theme .phd-feed-badge {
+  background: #14162a;
+  color: var(--text-secondary);
+}
+
+body.dark-theme .phd-feed-table th {
+  border-bottom-color: var(--border-light);
+}
+
+body.dark-theme .phd-feed-table td {
+  border-bottom-color: #1c1e34;
+  color: var(--text-primary);
+}
+
+body.dark-theme .phd-row:hover td {
+  background: rgba(108, 99, 255, 0.06);
+}
+
+body.dark-theme .phd-view-report-btn {
+  background: #14162a;
+  border-color: var(--border-light);
+  color: var(--accent);
+}
+
+body.dark-theme .phd-view-report-btn:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+body.dark-theme .phd-state-card {
+  background: #181a2e;
+  border-color: var(--border-light);
+}
+
+/* --- RCA Drawer Dark Mode --- */
+body.dark-theme .rca-drawer-container {
+  background: #181a2e;
+}
+
+body.dark-theme .rca-drawer-header {
+  background: #14162a;
+  border-bottom-color: var(--border-light);
+}
+
+body.dark-theme .rca-card {
+  background: #14162a;
+  border-color: var(--border-light);
+}
+
+body.dark-theme .rca-hero-node code {
+  background: #12132a;
+  color: var(--text-secondary);
+}
+
+body.dark-theme .rca-checkbox-item {
+  background: #12132a;
+  border-color: var(--border-light);
+}
+
+body.dark-theme .rca-checkbox-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.dark-theme .rca-checkbox-text {
+  color: var(--text-primary);
+}
+
+body.dark-theme .rca-meter-track {
+  background: #252840;
+}
+
+body.dark-theme .rca-evidence-body p {
+  color: var(--text-secondary);
+}
+
 /* --- Dark theme transition for smooth toggle --- */
 body, .app-content, .chat-input-form, .review-card, .permit-textarea,
 .filter-input, .finding-card, .document-card, .upload-modal, .tag-catalog-table-container,
+.phd-zone1-bar, .phd-asset-card, .phd-zone3-section, .rca-drawer-container,
 [class*="settingsCard"], [class*="loginCard"], [class*="loginContainer"] {
   transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease,
               box-shadow 0.3s ease;
 }
+

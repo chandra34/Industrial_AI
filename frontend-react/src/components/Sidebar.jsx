@@ -42,6 +42,20 @@ export default function Sidebar({ activeView, onViewChange, isDarkMode, onToggle
         </button>
 
         <button
+          className={`${styles.sidebarBtn} ${activeView === 'dashboard' ? styles.active : ''}`}
+          onClick={() => onViewChange('dashboard')}
+          title="Plant Health Dashboard"
+          aria-label="Plant Health Dashboard"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          </svg>
+        </button>
+
+        <button
           className={`${styles.sidebarBtn} ${activeView === 'chat' ? styles.active : ''}`}
           onClick={() => onViewChange('chat')}
           title="Chat"

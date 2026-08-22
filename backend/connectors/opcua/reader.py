@@ -414,4 +414,80 @@ class OPCUAReader:
                 "note": f"History read at time not supported or failed: {e}",
             }
 
+    async def detect_anomalies(
+        self,
+        node_id: str,
+        lookback_hours: int = 24,
+        sensor_type: str = "general",
+    ) -> Dict[str, Any]:
+        """Run statistical anomaly detection on recent historical telemetry.
+
+        Fetches historical data via read_node_history() and passes it through
+        the analytics engine's 4 industry-standard methods.
+
+        :param node_id: OPC UA Node ID of the sensor.
+        :param lookback_hours: Hours of history to analyze (default 24).
+        :param sensor_type: Sensor type hint ('temperature', 'pressure',
+                            'vibration', 'speed', 'current', 'flow', 'general').
+        :return: Dict containing per-method anomaly scores and overall severity.
+        """
+        from backend.analytics.anomaly_engine import run_full_anomaly_analysis
+
+        now = datetime.now(timezone.utc)
+        start_time = now - timedelta(hours=lookback_hours)
+
+        # Fetch raw history using existing method
+        history_result = await self.read_node_history(
+            node_id=node_id,
+            start_time_iso=start_time.isoformat(),
+            end_time_iso=now.isoformat(),
+            num_values=500,
+        )
+
+        records = history_result.get("history", [])
+
+        # Extract numeric values and epoch timestamps
+        values: List[float] = []
+        timestamps_epoch: List[float] = []
+        for rec in records:
+            val = rec.get("value")
+            ts_str = rec.get("timestamp")
+            if val is None or ts_str is None:
+                continue
+            try:
+                numeric_val = float(val)
+            except (TypeError, ValueError):
+                continue
+            try:
+                ts_clean = ts_str.replace("Z", "+00:00") if isinstance(ts_str, str) and ts_str.endswith("Z") else ts_str
+                ts_dt = datetime.fromisoformat(str(ts_clean))
+                epoch = ts_dt.timestamp()
+            except Exception:
+                continue
+            values.append(numeric_val)
+            timestamps_epoch.append(epoch)
+
+        if not values:
+            return {
+                "node_id": node_id,
+                "sensor_type": sensor_type,
+                "lookback_hours": lookback_hours,
+                "sample_count": 0,
+                "overall_severity": "INSUFFICIENT_DATA",
+                "methods": {},
+                "note": "No valid numeric historical data found for analysis.",
+            }
+
+        # Run the full statistical analysis
+        analysis = run_full_anomaly_analysis(
+            values=values,
+            timestamps_epoch=timestamps_epoch,
+            sensor_type=sensor_type,
+        )
+
+        analysis["node_id"] = node_id
+        analysis["lookback_hours"] = lookback_hours
+        return analysis
+
+
 

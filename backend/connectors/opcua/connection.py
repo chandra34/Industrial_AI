@@ -114,9 +114,11 @@ class OPCUAClient:
                 reconnect_request_timeout=self.config.reconnect_request_timeout,
             )
 
-            # Set session name if provided
+            # Set session name and session timeout if configured
             if self.config.session_name:
                 self._client.name = self.config.session_name
+            if hasattr(self.config, "session_timeout_ms") and self.config.session_timeout_ms:
+                self._client.session_timeout = self.config.session_timeout_ms
 
             # Configure Authentication (Username/Password or Anonymous)
             if self.config.username is not None and self.config.password is not None:
