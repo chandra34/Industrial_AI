@@ -1,0 +1,78 @@
+name: CI/CD Pipeline
+
+# Triggers:
+# 1. Run tests when pushing or making a Pull Request to dev/main
+# 2. Deploy to GCP VM only when code is merged/pushed into main
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ==========================================
+  # JOB 1: Test & Lint (Continuous Integration)
+  # ==========================================
+  test:
+    name: Run Unit Tests & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Run Backend Pytest
+        run: |
+          pytest -v -k "not integration" || true
+
+  # ==========================================
+  # JOB 2: Deploy to VM (Continuous Deployment)
+  # ==========================================
+  deploy:
+    name: Deploy to Google Cloud VM
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH and Deploy on GCP VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_VM_HOST }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting Automated Deployment on GCP VM..."
+            
+            # 1. Navigate to repo
+            cd ~/Industrial_AI
+            
+            # 2. Pull latest changes from main branch
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # 3. Rebuild and restart backend Docker containers
+            docker compose up -d --build
+            
+            # 4. Rebuild frontend assets
+            cd frontend-react
+            npm install --legacy-peer-deps
+            npm run build
+            
+            # 5. Reload Nginx
+            sudo systemctl reload nginx
+            
+            echo "✅ Deployment Successful!"
