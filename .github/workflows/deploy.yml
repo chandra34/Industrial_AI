@@ -55,6 +55,7 @@ jobs:
           key: ${{ secrets.GCP_VM_SSH_KEY }}
           port: 22
           script: |
+            set -e
             echo "🚀 Starting Automated Deployment on GCP VM..."
             
             # 1. Navigate to repo
